@@ -1,0 +1,6 @@
+{
+  "name": "Prime Ads Agency",
+  "description": "Elite promotion agency specializing in Telegram channel growth, gambling ad networks, social media reach, and specialized traffic scaling.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

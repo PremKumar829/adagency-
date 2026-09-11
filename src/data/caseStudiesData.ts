@@ -1,0 +1,43 @@
+import { CaseStudy } from '../types';
+
+export const CASE_STUDIES_DATA: CaseStudy[] = [
+  {
+    id: 'case-telegram-vip',
+    title: 'Alpha Trading & Casino Signals VIP',
+    category: 'Telegram Channel Scale',
+    clientType: 'Private Trading Community',
+    duration: '7 Days Blitz',
+    beforeStat: '1,240 Members',
+    afterStat: '48,600 Members',
+    growthPercentage: '+3,820%',
+    roi: '5.4x ROI in VIP subs',
+    description: 'Scaled a private signals channel with high-intent betting and crypto traders using target-filtered scraper invites and top-tier pinned cross-promotions.',
+    chartPoints: [12, 18, 29, 45, 78, 115, 160],
+  },
+  {
+    id: 'case-gambling-network',
+    title: 'Asia-Pacific Online Casino & Aviator App',
+    category: 'Gambling Ad Network',
+    clientType: 'iGaming Operator',
+    duration: '14 Days Campaign',
+    beforeStat: '230 Daily FTDs',
+    afterStat: '1,890 Daily FTDs',
+    growthPercentage: '+721%',
+    roi: '340% Revenue Surge',
+    description: 'Deployed high-converting popunder networks and direct native banner funnels, targeting gaming enthusiasts with instant UPI & crypto onboarding.',
+    chartPoints: [20, 32, 54, 88, 120, 155, 192],
+  },
+  {
+    id: 'case-crypto-token',
+    title: 'DeFi Meme & Utility Token Launch',
+    category: 'Web3 & DexScreener Push',
+    clientType: 'Solana Token Project',
+    duration: '72 Hours Rush',
+    beforeStat: '$45K Market Cap',
+    afterStat: '$1.85M Market Cap',
+    growthPercentage: '+4,011%',
+    roi: '12.8x Liquidity Growth',
+    description: 'Triggered multi-channel volume pushes, trending positioning on decentralized trackers, and 18 high-profile Telegram call group drops.',
+    chartPoints: [8, 15, 34, 72, 110, 142, 188],
+  },
+];
