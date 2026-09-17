@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Language, Currency, ServiceItem, CaseStudy, ClientInquiry, GoalMessageConfig, LedgerOrder } from './types';
+import { Language, Currency, ServiceItem, CaseStudy, ClientInquiry, GoalMessageConfig, LedgerOrder, AgencySettings } from './types';
 import { AnnouncementBar } from './components/AnnouncementBar';
 import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
@@ -17,6 +17,7 @@ import { LaunchCampaignModal } from './components/LaunchCampaignModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
 import { INITIAL_CLIENT_INQUIRIES } from './data/inquiriesData';
 import { INITIAL_LEDGER_ORDERS } from './data/ledgerData';
+import { loadAgencySettings, saveAgencySettings, buildWhatsAppLink, buildTelegramLink } from './utils/agencySettings';
 
 export default function App() {
   const [language, setLanguage] = useState<Language>('en');
@@ -26,13 +27,17 @@ export default function App() {
     'Telegram Channel & Group Growth'
   );
 
+  // Agency Global Settings (Contact routing, numbers, password, copy)
+  const [agencySettings, setAgencySettings] = useState<AgencySettings>(() => loadAgencySettings());
+
   // Client Goal dynamic state
   const [clientGoalConfig, setClientGoalConfig] = useState<GoalMessageConfig | null>(null);
 
   // Announcement Bar State
-  const [customAnnouncement, setCustomAnnouncement] = useState<string>(
-    '🔥 Special Offer: Get Extra Reach on All Telegram & Gambling Campaigns Today! Instant Setup Available.'
-  );
+  const [customAnnouncement, setCustomAnnouncement] = useState<string>(() => {
+    const loaded = loadAgencySettings();
+    return loaded.announcementText || '🔥 Special Offer: Get Extra Reach on All Telegram & Gambling Campaigns Today! Instant Setup Available.';
+  });
   const [isAnnouncementVisible, setIsAnnouncementVisible] = useState<boolean>(true);
 
   // Live Ledger Orders State (synced with admin)
@@ -64,21 +69,70 @@ export default function App() {
     deliveryTime?: string;
   } | null>(null);
 
-  // Listen for #admin URL hash or keyboard shortcut
+  // Listen for /admin URL path, #admin hash, or keyboard shortcut
   useEffect(() => {
-    const handleHashChange = () => {
-      if (window.location.hash === '#admin') {
-        setIsAdminModalOpen(true);
+    const checkAdminRoute = () => {
+      try {
+        const path = window.location.pathname.toLowerCase();
+        const hash = window.location.hash.toLowerCase();
+        const search = window.location.search.toLowerCase();
+        
+        if (
+          path === '/admin' || 
+          path === '/admin/' || 
+          path.endsWith('/admin') || 
+          path.endsWith('/admin/') || 
+          hash === '#admin' || 
+          hash === '#/admin' || 
+          search === '?admin' || 
+          search.includes('admin=true')
+        ) {
+          setIsAdminModalOpen(true);
+        }
+      } catch (e) {
+        console.error(e);
       }
     };
-    handleHashChange();
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+
+    checkAdminRoute();
+
+    window.addEventListener('hashchange', checkAdminRoute);
+    window.addEventListener('popstate', checkAdminRoute);
+
+    // Global keyboard shortcut: Ctrl+Shift+A or Cmd+Shift+A
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'a' || e.key === 'A')) {
+        e.preventDefault();
+        setIsAdminModalOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('hashchange', checkAdminRoute);
+      window.removeEventListener('popstate', checkAdminRoute);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
+
+  // Handlers for Agency Settings
+  const handleSaveAgencySettings = (newSettings: AgencySettings) => {
+    saveAgencySettings(newSettings);
+    setAgencySettings(newSettings);
+    if (newSettings.announcementText !== undefined) {
+      setCustomAnnouncement(newSettings.announcementText);
+    }
+  };
 
   // Handlers for Inquiries
   const handleInquirySubmitted = (newInquiry: ClientInquiry) => {
-    setInquiries((prev) => [newInquiry, ...prev]);
+    setInquiries((prev) => {
+      const updated = [newInquiry, ...prev];
+      try {
+        localStorage.setItem('prime_ads_inquiries', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
   };
 
   const handleUpdateInquiryStatus = (id: string, newStatus: ClientInquiry['status']) => {
@@ -105,6 +159,9 @@ export default function App() {
   const handleSaveAnnouncement = (text: string, visible: boolean) => {
     setCustomAnnouncement(text);
     setIsAnnouncementVisible(visible);
+    const updated: AgencySettings = { ...agencySettings, announcementText: text };
+    saveAgencySettings(updated);
+    setAgencySettings(updated);
   };
 
   // Handlers for Ledger Orders
@@ -171,7 +228,11 @@ export default function App() {
   };
 
   const handleInstantSupport = () => {
-    window.open('https://t.me/PREMGUPTA2M', '_blank');
+    if (agencySettings.contactRoutingMode === 'whatsapp_only') {
+      window.open(buildWhatsAppLink(agencySettings, 'Hello Prime Ads Agency, I need urgent campaign support'), '_blank');
+    } else {
+      window.open(buildTelegramLink(agencySettings), '_blank');
+    }
   };
 
   return (
@@ -190,6 +251,8 @@ export default function App() {
         currency={currency}
         onCurrencyChange={setCurrency}
         onOpenLaunchModal={handleOpenLaunchModal}
+        onOpenAdmin={() => setIsAdminModalOpen(true)}
+        agencySettings={agencySettings}
       />
 
       <main className="flex-1">
@@ -198,6 +261,7 @@ export default function App() {
           language={language}
           onBookCampaign={handleOpenLaunchModal}
           onInstantSupport={handleInstantSupport}
+          agencySettings={agencySettings}
         />
 
         {/* 3. Live Social Proof, Trust & Live Order Ticker */}
@@ -251,6 +315,7 @@ export default function App() {
           initialCategory={contactInitialCategory}
           onInquirySubmitted={handleInquirySubmitted}
           onGoalConfigChange={setClientGoalConfig}
+          agencySettings={agencySettings}
         />
 
         {/* 8. FAQ Section */}
@@ -261,12 +326,14 @@ export default function App() {
       <Footer
         language={language}
         onOpenAdmin={() => setIsAdminModalOpen(true)}
+        agencySettings={agencySettings}
       />
 
       {/* 6. Floating Live Chat / Direct Redirect Widget */}
       <FloatingSupportWidget
         language={language}
         clientGoalConfig={clientGoalConfig}
+        agencySettings={agencySettings}
       />
 
       {/* Quick Launch Campaign Modal */}
@@ -276,6 +343,7 @@ export default function App() {
         language={language}
         currency={currency}
         prefillData={modalPrefill}
+        agencySettings={agencySettings}
       />
 
       {/* 7. Hidden Admin Panel Feature */}
@@ -283,8 +351,14 @@ export default function App() {
         isOpen={isAdminModalOpen}
         onClose={() => {
           setIsAdminModalOpen(false);
-          if (window.location.hash === '#admin') {
-            history.replaceState(null, '', window.location.pathname);
+          try {
+            const path = window.location.pathname;
+            const cleanPath = path.replace(/\/admin\/?$/i, '') || '/';
+            const hasAdminHash = window.location.hash === '#admin' || window.location.hash === '#/admin';
+            const cleanHash = hasAdminHash ? '' : window.location.hash;
+            window.history.replaceState(null, '', cleanPath + (cleanHash ? cleanHash : ''));
+          } catch (e) {
+            console.error(e);
           }
         }}
         inquiries={inquiries}
@@ -293,6 +367,8 @@ export default function App() {
         announcementText={customAnnouncement}
         isAnnouncementVisible={isAnnouncementVisible}
         onSaveAnnouncement={handleSaveAnnouncement}
+        agencySettings={agencySettings}
+        onSaveAgencySettings={handleSaveAgencySettings}
         ledgerOrders={ledgerOrders}
         onAddLedgerOrder={handleAddLedgerOrder}
         onDeleteLedgerOrder={handleDeleteLedgerOrder}

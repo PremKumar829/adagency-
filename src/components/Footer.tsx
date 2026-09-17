@@ -1,31 +1,42 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   ShieldCheck, 
   Send, 
   Phone, 
   Mail, 
   MapPin, 
-  Lock, 
   ArrowUp, 
   ExternalLink,
   Coins,
   CreditCard,
-  QrCode
+  QrCode,
+  Lock
 } from 'lucide-react';
-import { Language } from '../types';
+import { Language, AgencySettings } from '../types';
 import { TRANSLATIONS } from '../data/translations';
+import { buildWhatsAppLink, buildTelegramLink, getEffectiveWhatsappNumber } from '../utils/agencySettings';
 
 interface FooterProps {
   language: Language;
   onOpenAdmin?: () => void;
+  agencySettings?: AgencySettings;
 }
 
-export const Footer: React.FC<FooterProps> = ({ language, onOpenAdmin }) => {
+export const Footer: React.FC<FooterProps> = ({ language, onOpenAdmin, agencySettings }) => {
   const t = TRANSLATIONS[language];
+  const [secretClickCount, setSecretClickCount] = useState(0);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  const brandName = agencySettings?.brandName || t.brandName;
+  const telegramUrl = agencySettings ? buildTelegramLink(agencySettings) : 'https://t.me/PREMGUPTA2M';
+  const telegramHandle = agencySettings ? agencySettings.telegramHandle.replace('@', '') : 'PREMGUPTA2M';
+  const effectiveWhatsapp = agencySettings ? getEffectiveWhatsappNumber(agencySettings) : '+91 7004166377';
+  const whatsappUrl = agencySettings ? buildWhatsAppLink(agencySettings) : 'https://wa.me/917004166377';
+  const emailAddr = agencySettings?.email || 'pk4030794@gmail.com';
+  const addressText = agencySettings?.address || 'Katihar, Bihar - 854101';
 
   return (
     <footer className="bg-[#05080E] text-slate-400 border-t border-slate-800/90 pt-16 pb-12 relative">
@@ -45,7 +56,7 @@ export const Footer: React.FC<FooterProps> = ({ language, onOpenAdmin }) => {
                 </div>
               </div>
               <span className="font-extrabold text-xl text-white font-display">
-                {t.brandName}
+                {brandName}
               </span>
               <span className="text-emerald-400">
                 <ShieldCheck className="w-4 h-4" />
@@ -58,7 +69,7 @@ export const Footer: React.FC<FooterProps> = ({ language, onOpenAdmin }) => {
 
             <div className="flex items-center gap-3 pt-2">
               <a
-                href="https://t.me/PREMGUPTA2M"
+                href={telegramUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-sky-400 hover:border-sky-500 transition-colors"
@@ -67,7 +78,7 @@ export const Footer: React.FC<FooterProps> = ({ language, onOpenAdmin }) => {
                 <Send className="w-4 h-4" />
               </a>
               <a
-                href="https://wa.me/917004166377"
+                href={whatsappUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-400 hover:border-emerald-500 transition-colors"
@@ -76,7 +87,7 @@ export const Footer: React.FC<FooterProps> = ({ language, onOpenAdmin }) => {
                 <Phone className="w-4 h-4" />
               </a>
               <a
-                href="mailto:pk4030794@gmail.com"
+                href={`mailto:${emailAddr}`}
                 className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-rose-400 hover:border-rose-500 transition-colors"
                 title="Email"
               >
@@ -112,41 +123,33 @@ export const Footer: React.FC<FooterProps> = ({ language, onOpenAdmin }) => {
                 </a>
               </li>
               <li>
-                <a href="#reseller" className="hover:text-emerald-400 transition-colors">
-                  {t.nav.reseller}
-                </a>
-              </li>
-              <li>
-                <a href="#faq" className="hover:text-emerald-400 transition-colors">
-                  {t.nav.faq}
+                <a href="#contact" className="hover:text-emerald-400 transition-colors">
+                  {t.nav.contact}
                 </a>
               </li>
             </ul>
           </div>
 
-          {/* Key Services */}
+          {/* Categories */}
           <div className="lg:col-span-3 space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-white">
-              {t.footer.services}
+              Campaign Verticals
             </h4>
             <ul className="space-y-2 text-xs">
-              <li className="text-slate-400 hover:text-white">
-                Telegram Member Boosts
+              <li className="text-slate-400 hover:text-white cursor-pointer">
+                Telegram Channel & Community Growth
               </li>
-              <li className="text-slate-400 hover:text-white">
-                Gambling & Casino Traffic
+              <li className="text-slate-400 hover:text-white cursor-pointer">
+                Gambling & Casino Traffic Networks
               </li>
-              <li className="text-slate-400 hover:text-white">
-                Meta Ads & YouTube Push
+              <li className="text-slate-400 hover:text-white cursor-pointer">
+                Crypto Token & Web3 Trend Pushes
               </li>
-              <li className="text-slate-400 hover:text-white">
-                DexScreener Trending
+              <li className="text-slate-400 hover:text-white cursor-pointer">
+                Meta & YouTube Video Scaling
               </li>
-              <li className="text-slate-400 hover:text-white">
-                Mobile App Direct Installs
-              </li>
-              <li className="text-slate-400 hover:text-white">
-                Wholesale Reseller API
+              <li className="text-slate-400 hover:text-white cursor-pointer">
+                High-Volume Agency Reseller API
               </li>
             </ul>
           </div>
@@ -159,26 +162,26 @@ export const Footer: React.FC<FooterProps> = ({ language, onOpenAdmin }) => {
             <div className="space-y-2.5">
               <div className="flex items-center gap-2">
                 <Send className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                <a href="https://t.me/PREMGUPTA2M" target="_blank" rel="noreferrer" className="text-slate-300 hover:text-sky-400">
-                  t.me/PREMGUPTA2M
+                <a href={telegramUrl} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-sky-400">
+                  t.me/{telegramHandle}
                 </a>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <a href="https://wa.me/917004166377" target="_blank" rel="noreferrer" className="text-slate-300 hover:text-emerald-400">
-                  +91 7004166377
+                <a href={whatsappUrl} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-emerald-400">
+                  {effectiveWhatsapp}
                 </a>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                <a href="mailto:pk4030794@gmail.com" className="text-slate-300 hover:text-rose-400">
-                  pk4030794@gmail.com
+                <a href={`mailto:${emailAddr}`} className="text-slate-300 hover:text-rose-400">
+                  {emailAddr}
                 </a>
               </div>
               <div className="flex items-start gap-2 pt-1">
                 <MapPin className="w-3.5 h-3.5 text-teal-400 shrink-0 mt-0.5" />
                 <span className="text-slate-400">
-                  Katihar, Bihar - 854101
+                  {addressText}
                 </span>
               </div>
             </div>
@@ -199,51 +202,47 @@ export const Footer: React.FC<FooterProps> = ({ language, onOpenAdmin }) => {
               UPI / GPay / PhonePe
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300 font-mono">
-              <Coins className="w-3.5 h-3.5 text-teal-400" />
-              USDT (TRC20 / ERC20)
+              <Coins className="w-3.5 h-3.5 text-cyan-400" />
+              USDT (TRC20 / BEP20)
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300 font-mono">
-              <Coins className="w-3.5 h-3.5 text-amber-400" />
-              Bitcoin (BTC)
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300 font-mono">
-              <CreditCard className="w-3.5 h-3.5 text-cyan-400" />
-              Cards & NetBanking
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-400 font-mono">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Escrow Protection
+              <CreditCard className="w-3.5 h-3.5 text-indigo-400" />
+              Credit & Debit Cards
             </span>
           </div>
         </div>
 
-        {/* Disclaimer */}
-        <div className="py-6 text-[11px] text-slate-500 leading-relaxed">
-          {t.footer.disclaimer}
-        </div>
-
-        {/* Bottom copyright & Back to top */}
-        <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <p>© {new Date().getFullYear()} Prime Ads Agency. {t.footer.rights}</p>
+        {/* Bottom copyright & Discreet Admin Access */}
+        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+          <div className="flex items-center gap-2">
+            <span>© {new Date().getFullYear()} {brandName}. All rights reserved.</span>
+            <span className="text-slate-700">•</span>
+            <span 
+              onClick={() => {
+                if (onOpenAdmin) {
+                  setSecretClickCount((prev) => {
+                    if (prev + 1 >= 3) {
+                      onOpenAdmin();
+                      return 0;
+                    }
+                    return prev + 1;
+                  });
+                }
+              }}
+              className="select-none cursor-default hover:text-slate-400 transition-colors"
+              title=""
+            >
+              Team PrimeX Authorized
+            </span>
+          </div>
 
           <div className="flex items-center gap-4">
-            {onOpenAdmin && (
-              <button
-                onClick={onOpenAdmin}
-                className="inline-flex items-center gap-1 text-[11px] text-slate-600 hover:text-slate-400 transition-colors"
-                title="Staff Portal Login"
-              >
-                <Lock className="w-3 h-3" />
-                <span>Admin Portal</span>
-              </button>
-            )}
-
             <button
               onClick={scrollToTop}
-              className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-emerald-400 transition-colors"
+              className="flex items-center gap-1 text-slate-400 hover:text-white transition-colors cursor-pointer"
             >
               <span>Back to top</span>
-              <ArrowUp className="w-3.5 h-3.5" />
+              <ArrowUp className="w-3 h-3" />
             </button>
           </div>
         </div>

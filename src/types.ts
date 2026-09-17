@@ -70,3 +70,75 @@ export interface GoalMessageConfig {
   targetHandleOrUrl: string;
 }
 
+export type ContactRoutingMode = 'both' | 'telegram_only' | 'whatsapp_only' | 'backup_whatsapp';
+
+export interface AgencySettings {
+  // Contact Channels
+  primaryWhatsapp: string;
+  backupWhatsapp: string;
+  contactRoutingMode: ContactRoutingMode;
+  telegramHandle: string;
+  telegramChannelLink: string;
+  email: string;
+  phone: string;
+  address: string;
+
+  // Site Content & Headlines
+  brandName: string;
+  heroHeadline: string;
+  heroSubtitle: string;
+  heroSubheadline?: string;
+  cpcHighlight: string;
+  activeClientsCount: string;
+  successRate: string;
+  campaignsCount: string;
+
+  // Announcement bar
+  announcementText?: string;
+  isAnnouncementVisible?: boolean;
+}
+
+export interface InvoiceItem {
+  id: string;
+  description: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+}
+
+export interface CustomInvoice {
+  id: string;
+  invoiceNumber: string;
+  date: string;
+  dueDate: string;
+  category: string;
+  clientName: string;
+  clientCompany?: string;
+  clientContact: string;
+  clientAddress?: string;
+  agencyName: string;
+  agencyAddress: string;
+  agencyPhone: string;
+  agencyEmail: string;
+  agencyWebsite: string;
+  ceoName: string; // Prem Gupta
+  ceoDesignation: string; // Founder & CEO
+  includeDigitalSignature: boolean;
+  signatureDate: string;
+  digitalStampCode: string;
+  currency: 'INR' | 'USD' | 'USDT';
+  items: InvoiceItem[];
+  subtotal: number;
+  taxPercent: number;
+  taxAmount: number;
+  discountAmount: number;
+  totalAmount: number;
+  paymentMode: 'UPI' | 'Bank Transfer' | 'Crypto (USDT)' | 'Card' | 'Cash';
+  transactionId: string;
+  paymentStatus: 'Paid' | 'Pending' | 'Partially Paid';
+  paymentDate?: string;
+  notes?: string;
+}
+
+
+

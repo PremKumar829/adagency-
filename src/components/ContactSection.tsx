@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Send, 
   MessageSquare, 
@@ -11,9 +11,10 @@ import {
   ShieldCheck,
   Sparkles
 } from 'lucide-react';
-import { Language, Currency, ClientInquiry, GoalMessageConfig } from '../types';
+import { Language, Currency, ClientInquiry, GoalMessageConfig, AgencySettings } from '../types';
 import { TRANSLATIONS } from '../data/translations';
 import { ClientGoalMessageBuilder } from './ClientGoalMessageBuilder';
+import { buildWhatsAppLink, buildTelegramLink, getEffectiveWhatsappNumber } from '../utils/agencySettings';
 
 interface ContactSectionProps {
   language: Language;
@@ -21,6 +22,7 @@ interface ContactSectionProps {
   initialCategory?: string;
   onInquirySubmitted?: (inquiry: ClientInquiry) => void;
   onGoalConfigChange?: (config: GoalMessageConfig) => void;
+  agencySettings?: AgencySettings;
 }
 
 export const ContactSection: React.FC<ContactSectionProps> = ({
@@ -29,16 +31,59 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
   initialCategory = 'Telegram Channel & Group Growth',
   onInquirySubmitted,
   onGoalConfigChange,
+  agencySettings,
 }) => {
   const t = TRANSLATIONS[language];
+
+  const effectiveWhatsapp = agencySettings ? getEffectiveWhatsappNumber(agencySettings) : '+91 7004166377';
+  const telegramHandle = agencySettings ? agencySettings.telegramHandle.replace('@', '') : 'PREMGUPTA2M';
+  const telegramUrl = agencySettings ? buildTelegramLink(agencySettings) : 'https://t.me/PREMGUPTA2M';
+  const emailAddr = agencySettings?.email || 'pk4030794@gmail.com';
+  const phoneLine = agencySettings?.phone || '+91 7004166377';
+  const addressText = agencySettings?.address || 'Katihar, Bihar - 854101';
+  const isTelegramOnly = agencySettings?.contactRoutingMode === 'telegram_only';
+
+  const getContactBudgetOptions = (cur: Currency) => {
+    if (cur === 'INR') {
+      return [
+        { value: '₹4,000 - ₹13,000 (Starter Trial)', label: '₹4,000 - ₹13,000 (Starter Trial)' },
+        { value: '₹13,000 - ₹45,000 (Medium Scale)', label: '₹13,000 - ₹45,000 (Medium Scale)' },
+        { value: '₹45,000 - ₹1,30,000 (High-Impact Blitz)', label: '₹45,000 - ₹1,30,000 (High-Impact Blitz)' },
+        { value: '₹1,30,000+ (Enterprise / Unlimited)', label: '₹1,30,000+ (Enterprise / Unlimited)' },
+      ];
+    } else if (cur === 'USDT') {
+      return [
+        { value: '50 - 150 ₮ (Starter Trial)', label: '50 - 150 ₮ (Starter Trial)' },
+        { value: '150 - 500 ₮ (Medium Scale)', label: '150 - 500 ₮ (Medium Scale)' },
+        { value: '500 - 1,500 ₮ (High-Impact Blitz)', label: '500 - 1,500 ₮ (High-Impact Blitz)' },
+        { value: '1,500+ ₮ (Enterprise / Unlimited)', label: '1,500+ ₮ (Enterprise / Unlimited)' },
+      ];
+    } else {
+      return [
+        { value: '$50 - $150 (Starter Trial)', label: '$50 - $150 (Starter Trial)' },
+        { value: '$150 - $500 (Medium Scale)', label: '$150 - $500 (Medium Scale)' },
+        { value: '$500 - $1,500 (High-Impact Blitz)', label: '$500 - $1,500 (High-Impact Blitz)' },
+        { value: '$1,500+ (Enterprise / Unlimited)', label: '$1,500+ (Enterprise / Unlimited)' },
+      ];
+    }
+  };
 
   const [formData, setFormData] = useState({
     name: '',
     contact: '',
     category: initialCategory,
-    budget: '$100 - $500',
+    budget: getContactBudgetOptions(currency)[1].value,
     message: '',
   });
+
+  // Keep contact form budget synced with active currency
+  useEffect(() => {
+    const opts = getContactBudgetOptions(currency);
+    setFormData((prev) => ({
+      ...prev,
+      budget: opts[1].value,
+    }));
+  }, [currency]);
 
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -85,12 +130,20 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
   };
 
   const handleSendToWhatsApp = () => {
-    const text = `*New Campaign Inquiry - Prime Ads Agency*%0A%0A*Name:* ${encodeURIComponent(formData.name || 'Client')}%0A*Contact:* ${encodeURIComponent(formData.contact)}%0A*Category:* ${encodeURIComponent(formData.category)}%0A*Budget:* ${encodeURIComponent(formData.budget)}%0A*Target URL / Notes:* ${encodeURIComponent(formData.message || 'Ready to launch campaign')}`;
-    window.open(`https://wa.me/917004166377?text=${text}`, '_blank');
+    const text = `*New Campaign Inquiry - ${agencySettings?.brandName || 'Prime Ads Agency'}*%0A%0A*Name:* ${encodeURIComponent(formData.name || 'Client')}%0A*Contact:* ${encodeURIComponent(formData.contact)}%0A*Category:* ${encodeURIComponent(formData.category)}%0A*Budget:* ${encodeURIComponent(formData.budget)}%0A*Target URL / Notes:* ${encodeURIComponent(formData.message || 'Ready to launch campaign')}`;
+    if (agencySettings) {
+      window.open(buildWhatsAppLink(agencySettings, text), '_blank');
+    } else {
+      window.open(`https://wa.me/917004166377?text=${text}`, '_blank');
+    }
   };
 
   const handleSendToTelegram = () => {
-    window.open('https://t.me/PREMGUPTA2M', '_blank');
+    if (agencySettings) {
+      window.open(buildTelegramLink(agencySettings), '_blank');
+    } else {
+      window.open('https://t.me/PREMGUPTA2M', '_blank');
+    }
   };
 
   return (
@@ -116,6 +169,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
           language={language}
           currency={currency}
           onGoalConfigChange={onGoalConfigChange}
+          agencySettings={agencySettings}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
@@ -128,39 +182,50 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
               </h3>
 
               {/* Telegram Item */}
-              <div className="flex items-start justify-between gap-3 p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-sky-500/50 transition-colors">
+              <div className={`flex items-start justify-between gap-3 p-3.5 rounded-xl border transition-colors ${
+                isTelegramOnly 
+                  ? 'bg-sky-950/70 border-sky-500 shadow-[0_0_15px_rgba(56,189,248,0.2)]' 
+                  : 'bg-slate-950/70 border-slate-800 hover:border-sky-500/50'
+              }`}>
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-lg bg-sky-500/15 border border-sky-500/30 flex items-center justify-center shrink-0">
                     <Send className="w-5 h-5 text-sky-400" />
                   </div>
                   <div>
-                    <span className="text-[11px] font-mono text-sky-400 font-bold uppercase block">
-                      {t.contact.telegram}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-sky-400 font-bold uppercase block">
+                        {t.contact.telegram}
+                      </span>
+                      {isTelegramOnly && (
+                        <span className="px-1.5 py-0.2 rounded bg-sky-400/20 text-sky-300 text-[10px] font-mono font-bold">
+                          ⚡ Preferred / 2-Min Reply
+                        </span>
+                      )}
+                    </div>
                     <a
-                      href="https://t.me/PREMGUPTA2M"
+                      href={telegramUrl}
                       target="_blank"
                       rel="noreferrer"
                       className="text-sm font-semibold text-white hover:text-sky-300 transition-colors"
                     >
-                      t.me/PREMGUPTA2M
+                      t.me/{telegramHandle}
                     </a>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={() => handleCopy('t.me/PREMGUPTA2M', 'telegram')}
-                    className="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                    onClick={() => handleCopy(`t.me/${telegramHandle}`, 'telegram')}
+                    className="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
                     title="Copy Handle"
                   >
                     {copiedKey === 'telegram' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
                   <a
-                    href="https://t.me/PREMGUPTA2M"
+                    href={telegramUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="p-2 rounded-lg bg-sky-600/20 text-sky-400 hover:bg-sky-600/30 transition-colors"
+                    className="p-2 rounded-lg bg-sky-600/20 text-sky-400 hover:bg-sky-600/30 transition-colors cursor-pointer"
                     title="Open in Telegram"
                   >
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -179,29 +244,34 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                       {t.contact.whatsapp}
                     </span>
                     <a
-                      href="https://wa.me/917004166377"
+                      href={agencySettings ? buildWhatsAppLink(agencySettings) : `https://wa.me/917004166377`}
                       target="_blank"
                       rel="noreferrer"
                       className="text-sm font-semibold text-white hover:text-emerald-300 transition-colors"
                     >
-                      +91 7004166377
+                      {effectiveWhatsapp}
                     </a>
+                    {isTelegramOnly && (
+                      <span className="text-[10px] text-amber-400 block mt-0.5">
+                        (WhatsApp currently offline for review - please use Telegram)
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={() => handleCopy('+91 7004166377', 'whatsapp')}
-                    className="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                    onClick={() => handleCopy(effectiveWhatsapp, 'whatsapp')}
+                    className="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
                     title="Copy Phone"
                   >
                     {copiedKey === 'whatsapp' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
                   <a
-                    href="https://wa.me/917004166377"
+                    href={agencySettings ? buildWhatsAppLink(agencySettings) : `https://wa.me/917004166377`}
                     target="_blank"
                     rel="noreferrer"
-                    className="p-2 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 transition-colors"
+                    className="p-2 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 transition-colors cursor-pointer"
                     title="Open WhatsApp"
                   >
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -220,25 +290,25 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                       {t.contact.email}
                     </span>
                     <a
-                      href="mailto:pk4030794@gmail.com"
+                      href={`mailto:${emailAddr}`}
                       className="text-sm font-semibold text-white hover:text-rose-300 transition-colors"
                     >
-                      pk4030794@gmail.com
+                      {emailAddr}
                     </a>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={() => handleCopy('pk4030794@gmail.com', 'email')}
-                    className="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                    onClick={() => handleCopy(emailAddr, 'email')}
+                    className="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
                     title="Copy Email"
                   >
                     {copiedKey === 'email' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
                   <a
-                    href="mailto:pk4030794@gmail.com"
-                    className="p-2 rounded-lg bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 transition-colors"
+                    href={`mailto:${emailAddr}`}
+                    className="p-2 rounded-lg bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 transition-colors cursor-pointer"
                     title="Send Email"
                   >
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -256,7 +326,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                     {t.contact.address}
                   </span>
                   <p className="text-sm font-semibold text-white">
-                    Katihar, Bihar - 854101
+                    {addressText}
                   </p>
                   <span className="text-[11px] text-slate-500">
                     Regional Operations & Strategy Hub
@@ -385,18 +455,25 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                     </div>
 
                     <div>
-                      <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                        {t.contact.budgetLabel}
-                      </label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label htmlFor="contact-budget-select" className="text-xs font-semibold text-slate-300">
+                          {t.contact.budgetLabel}
+                        </label>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-emerald-400 border border-slate-700">
+                          {currency === 'INR' ? 'INR (₹)' : currency === 'USDT' ? 'USDT (₮)' : 'USD ($)'}
+                        </span>
+                      </div>
                       <select
+                        id="contact-budget-select"
                         value={formData.budget}
                         onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
                         className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700/80 focus:border-emerald-500 focus:outline-none text-slate-200 text-xs sm:text-sm cursor-pointer"
                       >
-                        <option value="$50 - $150 (₹4,000 - ₹12,000)">$50 - $150 (Starter Trial)</option>
-                        <option value="$150 - $500 (₹12,000 - ₹40,000)">$150 - $500 (Medium Scale)</option>
-                        <option value="$500 - $1,500 (₹40,000 - ₹1,20,000)">$500 - $1,500 (High-Impact Blitz)</option>
-                        <option value="$1,500+ (₹1,20,000+) Scale">$1,500+ (Enterprise / Unlimited)</option>
+                        {getContactBudgetOptions(currency).map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>

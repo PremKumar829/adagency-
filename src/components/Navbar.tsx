@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Menu, X, Rocket, Coins } from 'lucide-react';
-import { Language, Currency } from '../types';
+import { Language, Currency, AgencySettings } from '../types';
 import { TRANSLATIONS } from '../data/translations';
 import { CURRENCY_CONFIG } from '../utils/currency';
 
@@ -9,6 +9,8 @@ interface NavbarProps {
   currency: Currency;
   onCurrencyChange: (cur: Currency) => void;
   onOpenLaunchModal: () => void;
+  onOpenAdmin?: () => void;
+  agencySettings?: AgencySettings;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -16,9 +18,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   currency,
   onCurrencyChange,
   onOpenLaunchModal,
+  onOpenAdmin,
+  agencySettings,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const t = TRANSLATIONS[language];
+  const brandName = agencySettings?.brandName || t.brandName;
 
   const navLinks = [
     { label: t.nav.home, href: '#hero' },
@@ -59,7 +64,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <span className="font-extrabold text-lg sm:text-xl text-white tracking-tight font-display group-hover:text-emerald-300 transition-colors">
-                  {t.brandName}
+                  {brandName}
                 </span>
                 <span
                   title={t.verified}
@@ -91,8 +96,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             ))}
           </nav>
 
-          {/* Desktop Right Actions: Currency Switcher & Primary Launch CTA */}
-          <div className="hidden sm:flex items-center gap-3">
+          {/* Desktop Right Actions: Currency Switcher, Admin Button & Primary Launch CTA */}
+          <div className="hidden sm:flex items-center gap-2.5">
             {/* Currency Switcher */}
             <div className="relative">
               <label htmlFor="currency-switcher-select" className="sr-only">Choose Currency</label>
@@ -135,7 +140,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="mobile-menu-toggle-btn"
               aria-label="Toggle navigation menu"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 hover:text-emerald-400 focus:outline-none"
+              className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 hover:text-emerald-400 focus:outline-none cursor-pointer"
             >
               {mobileMenuOpen ? (
                 <X className="w-6 h-6" />
@@ -166,20 +171,25 @@ export const Navbar: React.FC<NavbarProps> = ({
             ))}
           </div>
 
-          <div className="pt-2 border-t border-slate-800/80 flex flex-col gap-3">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-xs text-slate-400 font-medium">Currency:</span>
-              <select
-                id="mobile-currency-select"
-                aria-label="Select currency"
-                value={currency}
-                onChange={(e) => onCurrencyChange(e.target.value as Currency)}
-                className="bg-slate-900 border border-slate-700/80 text-slate-200 rounded px-2.5 py-1 text-xs font-semibold focus:outline-none"
-              >
-                <option value="INR">{CURRENCY_CONFIG.INR.label}</option>
-                <option value="USD">{CURRENCY_CONFIG.USD.label}</option>
-                <option value="USDT">{CURRENCY_CONFIG.USDT.label}</option>
-              </select>
+          {/* Mobile Actions */}
+          <div className="pt-2 flex flex-col gap-3 border-t border-slate-800/80">
+            <div className="flex items-center justify-between px-2">
+              <span className="text-xs text-slate-400">{t.currency}</span>
+              <div className="flex gap-1.5">
+                {(['INR', 'USD', 'USDT'] as Currency[]).map((cur) => (
+                  <button
+                    key={cur}
+                    onClick={() => onCurrencyChange(cur)}
+                    className={`px-2.5 py-1 rounded text-xs font-semibold ${
+                      currency === cur
+                        ? 'bg-emerald-500 text-slate-950 font-bold'
+                        : 'bg-slate-900 text-slate-300 border border-slate-800'
+                    }`}
+                  >
+                    {cur}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <button
@@ -187,9 +197,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setMobileMenuOpen(false);
                 onOpenLaunchModal();
               }}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-emerald-500 text-slate-950 font-bold text-sm tracking-wide shadow-md hover:bg-emerald-400"
+              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-[0_0_20px_rgba(16,185,129,0.35)] flex items-center justify-center gap-2 cursor-pointer"
             >
-              <Rocket className="w-4 h-4" />
+              <Rocket className="w-4 h-4 text-slate-950" />
               <span>{t.nav.launchCampaign}</span>
             </button>
           </div>

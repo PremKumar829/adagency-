@@ -53,3 +53,30 @@
   background: #334155;
 }
 
+/* Print Styles for Custom Invoice */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-invoice, #printable-invoice * {
+    visibility: visible;
+  }
+  #printable-invoice {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+    color: black !important;
+  }
+  @page {
+    margin: 1cm;
+    size: auto;
+  }
+}
+

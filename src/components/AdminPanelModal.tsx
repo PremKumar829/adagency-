@@ -6,21 +6,35 @@ import {
   ShieldCheck, 
   Users, 
   Megaphone, 
-  BarChart3, 
   Check, 
   Trash2, 
   Download, 
   Eye, 
-  EyeOff,
-  RefreshCw, 
+  EyeOff, 
   Search,
   ExternalLink,
   KeyRound,
-  CheckCircle2,
   AlertCircle,
-  ShieldAlert
+  Phone,
+  Send,
+  Mail,
+  MapPin,
+  Settings,
+  Sparkles,
+  RefreshCw,
+  Plus,
+  Copy,
+  CheckCircle2,
+  ShieldAlert,
+  Flame,
+  Radio,
+  Receipt,
+  FileText
 } from 'lucide-react';
-import { ClientInquiry, LedgerOrder } from '../types';
+import { ClientInquiry, LedgerOrder, AgencySettings, ContactRoutingMode } from '../types';
+import { cleanPhoneForWhatsApp, buildWhatsAppLink, buildTelegramLink } from '../utils/agencySettings';
+import { AVAILABLE_SERVICE_CATEGORIES, generateInquiryEmailTemplate } from '../utils/emailTemplateGenerator';
+import { InvoiceGenerator } from './InvoiceGenerator';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -31,6 +45,8 @@ interface AdminPanelModalProps {
   announcementText: string;
   isAnnouncementVisible: boolean;
   onSaveAnnouncement: (text: string, visible: boolean) => void;
+  agencySettings: AgencySettings;
+  onSaveAgencySettings: (settings: AgencySettings) => void;
   ledgerOrders?: LedgerOrder[];
   onAddLedgerOrder?: (order: LedgerOrder) => void;
   onDeleteLedgerOrder?: (id: string) => void;
@@ -47,24 +63,44 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   announcementText,
   isAnnouncementVisible,
   onSaveAnnouncement,
+  agencySettings,
+  onSaveAgencySettings,
+  ledgerOrders = [],
+  onAddLedgerOrder,
+  onDeleteLedgerOrder,
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passcode, setPasscode] = useState('');
   const [showPasscode, setShowPasscode] = useState(false);
   const [passcodeError, setPasscodeError] = useState(false);
-  const [activeTab, setActiveTab] = useState<'inquiries' | 'announcement' | 'security' | 'overview'>('inquiries');
+  const [activeTab, setActiveTab] = useState<'channels' | 'security' | 'content' | 'inquiries' | 'invoices' | 'orders'>('channels');
 
-  // Announcement state
+  // Invoice Generator State
+  const [invoiceInquiryTarget, setInvoiceInquiryTarget] = useState<ClientInquiry | null>(null);
+
+  // Contact & Agency Settings State
+  const [settingsForm, setSettingsForm] = useState<AgencySettings>(agencySettings);
+  const [settingsSaved, setSettingsSaved] = useState(false);
+
+  // Announcement State
   const [customAnnouncement, setCustomAnnouncement] = useState(announcementText);
   const [announcementVisible, setAnnouncementVisible] = useState(isAnnouncementVisible);
-  const [savedSuccess, setSavedSuccess] = useState(false);
+  const [announcementSaved, setAnnouncementSaved] = useState(false);
 
-  // Inquiry search & filter
+  // Inquiry Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | ClientInquiry['status']>('All');
   const [selectedInquiry, setSelectedInquiry] = useState<ClientInquiry | null>(null);
 
-  // Change Password state
+  // Email Template Response Generator State
+  const [emailInquiry, setEmailInquiry] = useState<ClientInquiry | null>(null);
+  const [emailCategory, setEmailCategory] = useState<string>('');
+  const [emailRecipient, setEmailRecipient] = useState<string>('');
+  const [emailSubject, setEmailSubject] = useState<string>('');
+  const [emailBody, setEmailBody] = useState<string>('');
+  const [emailCopied, setEmailCopied] = useState<'all' | 'subject' | 'body' | null>(null);
+
+  // Change Password State
   const [currentPasscode, setCurrentPasscode] = useState('');
   const [newPasscode, setNewPasscode] = useState('');
   const [confirmPasscode, setConfirmPasscode] = useState('');
@@ -73,6 +109,20 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [changePassError, setChangePassError] = useState('');
   const [changePassSuccess, setChangePassSuccess] = useState(false);
+
+  // New Ledger Order Form
+  const [newOrderClient, setNewOrderClient] = useState('');
+  const [newOrderService, setNewOrderService] = useState('Telegram Channel Growth');
+  const [newOrderVolume, setNewOrderVolume] = useState('10,000 Members');
+  const [newOrderAmount, setNewOrderAmount] = useState('149');
+  const [newOrderStatus, setNewOrderStatus] = useState<LedgerOrder['status']>('Completed');
+
+  // WhatsApp Ban Appeal Copy State
+  const [copiedAppeal, setCopiedAppeal] = useState(false);
+
+  useEffect(() => {
+    setSettingsForm(agencySettings);
+  }, [agencySettings]);
 
   useEffect(() => {
     setCustomAnnouncement(announcementText);
@@ -93,20 +143,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     }
   };
 
-  const handleSaveAnnouncement = () => {
-    onSaveAnnouncement(customAnnouncement, announcementVisible);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2000);
+  const handleSaveSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSaveAgencySettings(settingsForm);
+    setSettingsSaved(true);
+    setTimeout(() => setSettingsSaved(false), 2500);
   };
 
-  const handleExportInquiries = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(inquiries, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `prime_ads_inquiries_${Date.now()}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+  const handleSaveAnnouncement = () => {
+    onSaveAnnouncement(customAnnouncement, announcementVisible);
+    setAnnouncementSaved(true);
+    setTimeout(() => setAnnouncementSaved(false), 2500);
   };
 
   const handleChangePassword = (e: React.FormEvent) => {
@@ -151,6 +198,115 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     }
   };
 
+  const handleOpenEmailTemplate = (inq: ClientInquiry) => {
+    const template = generateInquiryEmailTemplate({
+      inquiry: inq,
+      agencySettings: settingsForm,
+    });
+    setEmailInquiry(inq);
+    setEmailCategory(template.category);
+    setEmailRecipient(template.recipient);
+    setEmailSubject(template.subject);
+    setEmailBody(template.body);
+    setEmailCopied(null);
+  };
+
+  const handleCategoryChangeForEmail = (newCategory: string) => {
+    if (!emailInquiry) return;
+    setEmailCategory(newCategory);
+    const updatedTemplate = generateInquiryEmailTemplate({
+      inquiry: emailInquiry,
+      selectedCategory: newCategory,
+      agencySettings: settingsForm,
+    });
+    setEmailSubject(updatedTemplate.subject);
+    setEmailBody(updatedTemplate.body);
+  };
+
+  const handleCopyEmail = (type: 'all' | 'subject' | 'body') => {
+    let textToCopy = '';
+    if (type === 'subject') {
+      textToCopy = emailSubject;
+    } else if (type === 'body') {
+      textToCopy = emailBody;
+    } else {
+      textToCopy = `To: ${emailRecipient || '(Client Email)'}\nSubject: ${emailSubject}\n\n${emailBody}`;
+    }
+    navigator.clipboard.writeText(textToCopy);
+    setEmailCopied(type);
+    setTimeout(() => setEmailCopied(null), 2000);
+  };
+
+  const handleSendViaMailClient = () => {
+    const mailtoUrl = `mailto:${encodeURIComponent(emailRecipient)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    window.open(mailtoUrl, '_blank');
+  };
+
+  const handleMarkAsContacted = () => {
+    if (emailInquiry) {
+      onUpdateInquiryStatus(emailInquiry.id, 'Contacted');
+      setEmailInquiry({ ...emailInquiry, status: 'Contacted' });
+    }
+  };
+
+  const handleExportInquiries = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(inquiries, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `prime_ads_inquiries_${Date.now()}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  const handleAddOrderSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newOrderClient) return;
+
+    if (onAddLedgerOrder) {
+      const order: LedgerOrder = {
+        id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+        timestamp: 'Just now',
+        clientMask: newOrderClient.trim(),
+        serviceCategory: newOrderService,
+        packageName: `${newOrderService} Package`,
+        volume: newOrderVolume,
+        amountUsd: Number(newOrderAmount) || 99,
+        status: newOrderStatus,
+      };
+      onAddLedgerOrder(order);
+      setNewOrderClient('');
+    }
+  };
+
+  // WhatsApp Appeal Text Generator
+  const currentBannedNum = settingsForm.primaryWhatsapp || '+91 7004166377';
+  const whatsappAppealText = `Dear WhatsApp Support Team,
+
+My phone number ${currentBannedNum} has been banned from WhatsApp. 
+
+I run a legitimate digital marketing agency ("Prime Ads Agency") providing marketing consultations. Our number was flagged automatically without any intentional violation of WhatsApp Terms of Service. All messages received are initiated by our genuine prospective clients.
+
+Please review our account and unban our number ${currentBannedNum} as soon as possible, as our ongoing client communications are severely affected.
+
+Phone Number: ${currentBannedNum}
+Country: India (+91)
+Agency: Prime Ads Agency
+
+Thank you for your prompt assistance.`;
+
+  const handleCopyAppeal = () => {
+    navigator.clipboard.writeText(whatsappAppealText);
+    setCopiedAppeal(true);
+    setTimeout(() => setCopiedAppeal(false), 2500);
+  };
+
+  const handleMailWhatsAppSupport = () => {
+    const subject = encodeURIComponent(`My WhatsApp Account Was Flagged By Mistake - Request Review (${currentBannedNum})`);
+    const body = encodeURIComponent(whatsappAppealText);
+    window.open(`mailto:support@support.whatsapp.com?cc=smb_web@support.whatsapp.com&subject=${subject}&body=${body}`, '_blank');
+  };
+
   // Filtered inquiries
   const filteredInquiries = inquiries.filter((inq) => {
     const matchesSearch = 
@@ -174,14 +330,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-white font-display font-bold text-base">
-                  Prime Ads Agency • Internal Admin Portal
+                  Prime Ads Agency • Master Admin Panel
                 </span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950 border border-emerald-500/40 text-emerald-400">
-                  v2.5 Protected
+                  Full Control
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
-                Authorized agency staff management & security controls
+                Contact channels, WhatsApp recovery, site content & security controls
               </p>
             </div>
           </div>
@@ -196,17 +352,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
         {/* Content Body */}
         {!isAuthenticated ? (
-          /* Authentication Screen (Password Hidden, No Demo Passcode displayed) */
+          /* Authentication Screen */
           <div className="p-8 sm:p-12 flex-1 flex flex-col items-center justify-center text-center max-w-md mx-auto">
             <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-6 shadow-[0_0_25px_rgba(16,185,129,0.2)]">
               <Lock className="w-8 h-8" />
             </div>
 
             <h3 className="text-2xl font-bold text-white font-display mb-2">
-              Staff Passcode Verification
+              Admin Passcode Required
             </h3>
             <p className="text-xs text-slate-400 mb-6">
-              Please enter your security master passcode to access client inquiries, announcements, and agency settings.
+              Enter your master admin password to change phone numbers, configure WhatsApp unban routing, update content, and access client inquiries.
             </p>
 
             <form onSubmit={handleLogin} className="w-full space-y-4">
@@ -218,7 +374,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     setPasscode(e.target.value);
                     if (passcodeError) setPasscodeError(false);
                   }}
-                  placeholder="Enter Staff Passcode..."
+                  placeholder="Enter Admin Passcode..."
                   className="w-full pl-4 pr-12 py-3 rounded-xl bg-slate-950 border border-slate-700 text-center tracking-widest text-emerald-400 font-mono text-sm focus:border-emerald-500 focus:outline-none"
                   autoFocus
                 />
@@ -243,70 +399,745 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 type="submit"
                 className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer"
               >
-                Authenticate Session
+                Unlock Admin Dashboard
               </button>
             </form>
 
             <div className="mt-8 text-[11px] text-slate-500 flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400/70" />
-              <span>Encrypted Authentication Gateway</span>
+              <span>Encrypted Access • Authorized Administrators Only</span>
             </div>
           </div>
         ) : (
           /* Authenticated Dashboard */
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Nav Tabs */}
-            <div className="flex items-center gap-2 px-6 pt-3 bg-slate-950/60 border-b border-slate-800 overflow-x-auto shrink-0">
+            <div className="flex items-center gap-1 px-6 pt-3 bg-slate-950/70 border-b border-slate-800 overflow-x-auto shrink-0">
               <button
-                onClick={() => setActiveTab('inquiries')}
+                onClick={() => setActiveTab('channels')}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 cursor-pointer whitespace-nowrap ${
-                  activeTab === 'inquiries'
-                    ? 'border-emerald-400 text-emerald-400 bg-slate-900'
+                  activeTab === 'channels'
+                    ? 'border-emerald-400 text-emerald-400 bg-slate-900 shadow-sm'
                     : 'border-transparent text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <Users className="w-4 h-4" />
-                <span>Client Inquiries ({inquiries.length})</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('announcement')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 cursor-pointer whitespace-nowrap ${
-                  activeTab === 'announcement'
-                    ? 'border-emerald-400 text-emerald-400 bg-slate-900'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Megaphone className="w-4 h-4" />
-                <span>Announcement Banner</span>
+                <Phone className="w-4 h-4 text-emerald-400" />
+                <span>Contact Channels & WhatsApp Solution</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('security')}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 cursor-pointer whitespace-nowrap ${
                   activeTab === 'security'
-                    ? 'border-emerald-400 text-emerald-400 bg-slate-900'
+                    ? 'border-emerald-400 text-emerald-400 bg-slate-900 shadow-sm'
                     : 'border-transparent text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <KeyRound className="w-4 h-4" />
+                <KeyRound className="w-4 h-4 text-amber-400" />
                 <span>Change Password & Security</span>
               </button>
 
               <button
-                onClick={() => setActiveTab('overview')}
+                onClick={() => setActiveTab('content')}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 cursor-pointer whitespace-nowrap ${
-                  activeTab === 'overview'
-                    ? 'border-emerald-400 text-emerald-400 bg-slate-900'
+                  activeTab === 'content'
+                    ? 'border-emerald-400 text-emerald-400 bg-slate-900 shadow-sm'
                     : 'border-transparent text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <BarChart3 className="w-4 h-4" />
-                <span>Agency Metrics</span>
+                <Megaphone className="w-4 h-4 text-cyan-400" />
+                <span>Site Content & Headlines</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('inquiries')}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 cursor-pointer whitespace-nowrap ${
+                  activeTab === 'inquiries'
+                    ? 'border-emerald-400 text-emerald-400 bg-slate-900 shadow-sm'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Users className="w-4 h-4 text-sky-400" />
+                <span>Client Inquiries ({inquiries.length})</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setInvoiceInquiryTarget(null);
+                  setActiveTab('invoices');
+                }}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 cursor-pointer whitespace-nowrap ${
+                  activeTab === 'invoices'
+                    ? 'border-emerald-400 text-emerald-400 bg-slate-900 shadow-sm'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Receipt className="w-4 h-4 text-emerald-400" />
+                <span>Custom Invoice & Billing</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('orders')}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 cursor-pointer whitespace-nowrap ${
+                  activeTab === 'orders'
+                    ? 'border-emerald-400 text-emerald-400 bg-slate-900 shadow-sm'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Flame className="w-4 h-4 text-rose-400" />
+                <span>Live Orders Ticker</span>
               </button>
             </div>
 
-            {/* Tab 1: Client Inquiries */}
+            {/* TAB 1: Contact Channels & WhatsApp Ban Solution */}
+            {activeTab === 'channels' && (
+              <div className="flex-1 p-6 overflow-y-auto space-y-6">
+                
+                {/* Immediate WhatsApp Ban Alert & Solutions Box */}
+                <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-950/50 via-slate-950 to-slate-950 border border-amber-500/40 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 shrink-0 mt-0.5">
+                      <ShieldAlert className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white font-display">
+                        WhatsApp Number (7004166377) Banned? Here is Your Complete Solution:
+                      </h4>
+                      <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                        Meta frequently bans personal WhatsApp numbers used for promotional ads, bulk messaging, or gambling links. To ensure <strong>ZERO lost clients</strong>, we provide two immediate failovers below:
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                    <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs space-y-1">
+                      <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+                        <Radio className="w-3.5 h-3.5" /> 1. Mode: Telegram Only
+                      </span>
+                      <p className="text-slate-400 text-[11px]">
+                        Switch Routing Mode below to <strong>"Telegram Only"</strong>. Every button on the site will route straight to Telegram (<span className="text-sky-400">@PREMGUPTA2M</span>), which never gets banned!
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs space-y-1">
+                      <span className="font-bold text-cyan-400 flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5" /> 2. Add New WhatsApp Number
+                      </span>
+                      <p className="text-slate-400 text-[11px]">
+                        Simply type your new SIM / WhatsApp number in the <strong>"Primary WhatsApp"</strong> field below and click Save. All buttons across the site update instantly!
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs space-y-1">
+                      <span className="font-bold text-amber-400 flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5" /> 3. Official Unban Appeal
+                      </span>
+                      <p className="text-slate-400 text-[11px]">
+                        Use the 1-Click WhatsApp Appeal Mailer at the bottom of this page to email WhatsApp Support directly. Most accounts get reviewed in 24 hours.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Edit Contact Channels Form */}
+                <form onSubmit={handleSaveSettings} className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-6">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-white font-display flex items-center gap-2">
+                        <Settings className="w-4 h-4 text-emerald-400" />
+                        Live Channels & Numbers Configuration
+                      </h4>
+                      <p className="text-xs text-slate-400">
+                        Changes made here immediately update the Navbar, Hero button, Floating Widget, Contact Form, and Footer!
+                      </p>
+                    </div>
+
+                    {settingsSaved && (
+                      <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-500/40 px-3 py-1 rounded-lg animate-in fade-in">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Saved to Website!</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Routing Mode Selector */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-200 block">
+                      Active Contact Routing Mode Across Website:
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <label 
+                        onClick={() => setSettingsForm({ ...settingsForm, contactRoutingMode: 'both' })}
+                        className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                          settingsForm.contactRoutingMode === 'both'
+                            ? 'bg-emerald-950/40 border-emerald-500 text-white shadow-sm'
+                            : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="routingMode"
+                          checked={settingsForm.contactRoutingMode === 'both'}
+                          onChange={() => setSettingsForm({ ...settingsForm, contactRoutingMode: 'both' })}
+                          className="mt-1"
+                        />
+                        <div>
+                          <span className="text-xs font-bold block text-white">
+                            WhatsApp + Telegram (Default)
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            Clients can choose between WhatsApp and Telegram.
+                          </span>
+                        </div>
+                      </label>
+
+                      <label 
+                        onClick={() => setSettingsForm({ ...settingsForm, contactRoutingMode: 'telegram_only' })}
+                        className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                          settingsForm.contactRoutingMode === 'telegram_only'
+                            ? 'bg-sky-950/50 border-sky-400 text-white shadow-sm'
+                            : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="routingMode"
+                          checked={settingsForm.contactRoutingMode === 'telegram_only'}
+                          onChange={() => setSettingsForm({ ...settingsForm, contactRoutingMode: 'telegram_only' })}
+                          className="mt-1"
+                        />
+                        <div>
+                          <span className="text-xs font-bold block text-sky-300">
+                            ⚡ Telegram Only (Safe Mode)
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            Recommended when WhatsApp is banned. Routes 100% of clicks safely to Telegram!
+                          </span>
+                        </div>
+                      </label>
+
+                      <label 
+                        onClick={() => setSettingsForm({ ...settingsForm, contactRoutingMode: 'backup_whatsapp' })}
+                        className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                          settingsForm.contactRoutingMode === 'backup_whatsapp'
+                            ? 'bg-emerald-950/40 border-emerald-500 text-white shadow-sm'
+                            : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="routingMode"
+                          checked={settingsForm.contactRoutingMode === 'backup_whatsapp'}
+                          onChange={() => setSettingsForm({ ...settingsForm, contactRoutingMode: 'backup_whatsapp' })}
+                          className="mt-1"
+                        />
+                        <div>
+                          <span className="text-xs font-bold block text-emerald-300">
+                            Use Backup WhatsApp
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            Directs WhatsApp clicks to your secondary / backup number.
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Phone & Telegram Inputs Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Primary WhatsApp */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 block mb-1">
+                        Primary WhatsApp Number
+                      </label>
+                      <input
+                        type="text"
+                        value={settingsForm.primaryWhatsapp}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, primaryWhatsapp: e.target.value })}
+                        placeholder="+91 7004166377 (replace with your new number)"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                      />
+                      <span className="text-[10px] text-slate-500 mt-1 block">
+                        Include country code (e.g. +91 9876543210).
+                      </span>
+                    </div>
+
+                    {/* Backup WhatsApp */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 block mb-1">
+                        Backup WhatsApp Number (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={settingsForm.backupWhatsapp}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, backupWhatsapp: e.target.value })}
+                        placeholder="+91 9999999999"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                      />
+                      <span className="text-[10px] text-slate-500 mt-1 block">
+                        Used if primary number is banned or when Backup mode is selected.
+                      </span>
+                    </div>
+
+                    {/* Telegram Handle */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 block mb-1">
+                        Primary Telegram Username
+                      </label>
+                      <input
+                        type="text"
+                        value={settingsForm.telegramHandle}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, telegramHandle: e.target.value })}
+                        placeholder="PREMGUPTA2M"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                      />
+                      <span className="text-[10px] text-slate-500 mt-1 block">
+                        Username without @ (e.g. PREMGUPTA2M).
+                      </span>
+                    </div>
+
+                    {/* Telegram Channel Link */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 block mb-1">
+                        Telegram Support / Channel URL
+                      </label>
+                      <input
+                        type="text"
+                        value={settingsForm.telegramChannelLink}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, telegramChannelLink: e.target.value })}
+                        placeholder="https://t.me/PREMGUPTA2M"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                      />
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 block mb-1">
+                        Agency Email
+                      </label>
+                      <input
+                        type="email"
+                        value={settingsForm.email}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, email: e.target.value })}
+                        placeholder="pk4030794@gmail.com"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Phone / Call */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 block mb-1">
+                        Phone Call Line
+                      </label>
+                      <input
+                        type="text"
+                        value={settingsForm.phone}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, phone: e.target.value })}
+                        placeholder="+91 7004166377"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Physical Address */}
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      Office / Business Address
+                    </label>
+                    <input
+                      type="text"
+                      value={settingsForm.address}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, address: e.target.value })}
+                      placeholder="Katihar, Bihar - 854101"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Save Button */}
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md transition-all cursor-pointer flex items-center gap-2"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>Save & Apply Channels to Entire Site</span>
+                    </button>
+                  </div>
+                </form>
+
+                {/* WhatsApp Unban Appeal Generator Tool */}
+                <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold text-white font-display flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-rose-400" />
+                        WhatsApp Unban Official Email Appeal Generator
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Send this official appeal to WhatsApp support team to restore your banned number ({currentBannedNum}).
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleCopyAppeal}
+                        className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-850 border border-slate-700 text-xs font-semibold text-slate-300 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        {copiedAppeal ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedAppeal ? 'Copied!' : 'Copy Appeal Text'}</span>
+                      </button>
+
+                      <button
+                        onClick={handleMailWhatsAppSupport}
+                        className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Send Email to WhatsApp</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Pre-filled appeal preview box */}
+                  <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 font-mono text-[11px] text-slate-300 leading-relaxed whitespace-pre-wrap select-all">
+                    {whatsappAppealText}
+                  </div>
+
+                  {/* Pro-Tips to Prevent Future Bans */}
+                  <div className="p-3.5 rounded-xl bg-slate-900/50 border border-slate-800/80 space-y-2">
+                    <span className="text-xs font-bold text-amber-300 block">
+                      💡 Pro-Tips to Avoid WhatsApp Bans in Digital Ad Marketing:
+                    </span>
+                    <ul className="text-[11px] text-slate-400 list-disc list-inside space-y-1">
+                      <li>Use <strong>WhatsApp Business App</strong> rather than personal WhatsApp.</li>
+                      <li>Never send unsolicited mass broadcast messages to users who haven't saved your contact.</li>
+                      <li>For gambling, crypto, and casino clients, always route them through <strong>Telegram</strong> first.</li>
+                      <li>When clients click from your website to WhatsApp, ensure the client sends the first message (our website already does this!).</li>
+                    </ul>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* TAB 2: Change Password & Security */}
+            {activeTab === 'security' && (
+              <div className="flex-1 p-6 overflow-y-auto space-y-6">
+                <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 max-w-xl mx-auto space-y-6">
+                  <div>
+                    <h4 className="text-base font-bold text-white font-display flex items-center gap-2">
+                      <KeyRound className="w-5 h-5 text-emerald-400" />
+                      Update Master Admin Password
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Change the passcode required to unlock this admin dashboard. Make sure you remember your new password!
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleChangePassword} className="space-y-4">
+                    {/* Current Passcode */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 block mb-1">
+                        Current Admin Passcode
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showCurrentPass ? "text" : "password"}
+                          value={currentPasscode}
+                          onChange={(e) => setCurrentPasscode(e.target.value)}
+                          placeholder="Enter current password..."
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPass(!showCurrentPass)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                        >
+                          {showCurrentPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* New Passcode */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 block mb-1">
+                        New Admin Passcode (minimum 4 characters)
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showNewPass ? "text" : "password"}
+                          value={newPasscode}
+                          onChange={(e) => setNewPasscode(e.target.value)}
+                          placeholder="Enter new password..."
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPass(!showNewPass)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                        >
+                          {showNewPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Confirm New Passcode */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 block mb-1">
+                        Confirm New Passcode
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPass ? "text" : "password"}
+                          value={confirmPasscode}
+                          onChange={(e) => setConfirmPasscode(e.target.value)}
+                          placeholder="Re-type new password..."
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPass(!showConfirmPass)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                        >
+                          {showConfirmPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {changePassError && (
+                      <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-xs text-rose-300 flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{changePassError}</span>
+                      </div>
+                    )}
+
+                    {changePassSuccess && (
+                      <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-xs text-emerald-400 flex items-center gap-2 font-bold">
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        <span>Admin password updated successfully! It will be required for next login.</span>
+                      </div>
+                    )}
+
+                    <div className="pt-2">
+                      <button
+                        type="submit"
+                        className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md"
+                      >
+                        Update Admin Password
+                      </button>
+                    </div>
+                  </form>
+
+                  <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-slate-300 block">Emergency Reset</span>
+                      <span className="text-[11px] text-slate-500">Reset password back to default (prime7788)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleResetPasswordToDefault}
+                      className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs text-amber-400 font-semibold cursor-pointer"
+                    >
+                      Reset to Default
+                    </button>
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      onClick={() => setIsAuthenticated(false)}
+                      className="px-4 py-2 rounded-xl bg-rose-950/40 border border-rose-800/60 hover:bg-rose-900 text-rose-300 text-xs font-semibold cursor-pointer"
+                    >
+                      Lock Portal / Logout
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: Site Content & Headlines */}
+            {activeTab === 'content' && (
+              <div className="flex-1 p-6 overflow-y-auto space-y-6">
+                
+                {/* Announcement Controls */}
+                <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-white font-display flex items-center gap-2">
+                        <Megaphone className="w-4 h-4 text-cyan-400" />
+                        Top Announcement Bar
+                      </h4>
+                      <p className="text-xs text-slate-400">
+                        Controls the running offer ticker at the very top of the website.
+                      </p>
+                    </div>
+
+                    {announcementSaved && (
+                      <span className="text-xs text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-500/40 px-3 py-1 rounded-lg">
+                        Banner Updated!
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+                    <div>
+                      <span className="text-xs font-bold text-white block">Banner Visibility</span>
+                      <span className="text-[11px] text-slate-400">Toggle whether the top banner appears across the website</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={announcementVisible}
+                        onChange={(e) => setAnnouncementVisible(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      Announcement Text Content
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={customAnnouncement}
+                      onChange={(e) => setCustomAnnouncement(e.target.value)}
+                      placeholder="Enter special offer, announcement, or notice..."
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleSaveAnnouncement}
+                      className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md transition-all cursor-pointer"
+                    >
+                      Save Announcement
+                    </button>
+                  </div>
+                </div>
+
+                {/* Hero Headlines & Stats Form */}
+                <form onSubmit={handleSaveSettings} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-5">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-white font-display flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-emerald-400" />
+                        Hero Section & Live Metrics Configuration
+                      </h4>
+                      <p className="text-xs text-slate-400">
+                        Edit main titles, value propositions, and metrics displayed to visitors.
+                      </p>
+                    </div>
+
+                    {settingsSaved && (
+                      <span className="text-xs text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-500/40 px-3 py-1 rounded-lg">
+                        Content Saved!
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Brand Name */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 block mb-1">
+                        Agency Brand Name
+                      </label>
+                      <input
+                        type="text"
+                        value={settingsForm.brandName}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, brandName: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                      />
+                    </div>
+
+                    {/* CPC Highlight */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 block mb-1">
+                        Pricing / CPC Highlight Tag
+                      </label>
+                      <input
+                        type="text"
+                        value={settingsForm.cpcHighlight}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, cpcHighlight: e.target.value })}
+                        placeholder="CPC Under ₹2"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Active Clients */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 block mb-1">
+                        Active Clients Metric
+                      </label>
+                      <input
+                        type="text"
+                        value={settingsForm.activeClientsCount}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, activeClientsCount: e.target.value })}
+                        placeholder="20,000+"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Success Rate */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 block mb-1">
+                        Success Rate Metric
+                      </label>
+                      <input
+                        type="text"
+                        value={settingsForm.successRate}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, successRate: e.target.value })}
+                        placeholder="99.8%"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Hero Headline */}
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      Hero Headline
+                    </label>
+                    <input
+                      type="text"
+                      value={settingsForm.heroHeadline}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, heroHeadline: e.target.value })}
+                      placeholder="Scale Your Brand, Telegram Channels & Platforms Fast"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Hero Subtitle */}
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      Hero Subtitle / Value Proposition
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={settingsForm.heroSubtitle}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, heroSubtitle: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md transition-all cursor-pointer flex items-center gap-2"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>Save Content Changes</span>
+                    </button>
+                  </div>
+                </form>
+
+              </div>
+            )}
+
+            {/* TAB 4: Client Inquiries (Leads) */}
             {activeTab === 'inquiries' && (
               <div className="flex-1 flex flex-col p-6 overflow-hidden space-y-4">
                 {/* Search & Action Bar */}
@@ -338,7 +1169,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                   <button
                     onClick={handleExportInquiries}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs text-slate-200 transition-colors cursor-pointer w-full sm:w-auto justify-center"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-700 text-xs text-slate-200 transition-colors cursor-pointer w-full sm:w-auto justify-center"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Export Inquiries (JSON)</span>
@@ -410,15 +1241,32 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             <td className="p-3 text-right">
                               <div className="flex items-center justify-end gap-1.5">
                                 <button
+                                  onClick={() => {
+                                    setInvoiceInquiryTarget(inq);
+                                    setActiveTab('invoices');
+                                  }}
+                                  className="p-1 rounded bg-amber-950/60 border border-amber-700/60 hover:bg-amber-900 text-amber-300 transition-colors cursor-pointer"
+                                  title="Generate Custom Invoice & Receipt"
+                                >
+                                  <Receipt className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleOpenEmailTemplate(inq)}
+                                  className="p-1 rounded bg-emerald-950/60 border border-emerald-700/60 hover:bg-emerald-900 text-emerald-300 transition-colors cursor-pointer"
+                                  title="Generate Pre-filled Email Response"
+                                >
+                                  <Mail className="w-3.5 h-3.5" />
+                                </button>
+                                <button
                                   onClick={() => setSelectedInquiry(inq)}
-                                  className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                                  className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
                                   title="View Details"
                                 >
                                   <Eye className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   onClick={() => onDeleteInquiry(inq.id)}
-                                  className="p-1 rounded bg-rose-950/40 border border-rose-800/60 hover:bg-rose-900 text-rose-300 transition-colors"
+                                  className="p-1 rounded bg-rose-950/40 border border-rose-800/60 hover:bg-rose-900 text-rose-300 transition-colors cursor-pointer"
                                   title="Delete Inquiry"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -434,405 +1282,441 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
             )}
 
-            {/* Tab 2: Announcement Controls */}
-            {activeTab === 'announcement' && (
+            {/* TAB: Custom Invoice & Billing Generator */}
+            {activeTab === 'invoices' && (
+              <InvoiceGenerator
+                agencySettings={settingsForm}
+                inquiries={inquiries}
+                initialInquiry={invoiceInquiryTarget}
+                onClearInitialInquiry={() => setInvoiceInquiryTarget(null)}
+              />
+            )}
+
+            {/* TAB 5: Live Orders Ticker */}
+            {activeTab === 'orders' && (
               <div className="flex-1 p-6 overflow-y-auto space-y-6">
-                <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
-                  <h4 className="text-sm font-bold text-white font-display">
-                    Top Announcement Bar Configuration
+                {/* Add new order form */}
+                <form onSubmit={handleAddOrderSubmit} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+                  <h4 className="text-sm font-bold text-white font-display flex items-center gap-2">
+                    <Plus className="w-4 h-4 text-emerald-400" />
+                    Inject New Order into Live Public Ledger
                   </h4>
 
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                     <div>
-                      <span className="text-xs font-bold text-white block">Banner Visibility</span>
-                      <span className="text-[11px] text-slate-400">Toggle whether the top banner appears across the website</span>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
+                      <label className="text-[11px] text-slate-400 block mb-1">Client Mask / ID</label>
                       <input
-                        type="checkbox"
-                        checked={announcementVisible}
-                        onChange={(e) => setAnnouncementVisible(e.target.checked)}
-                        className="sr-only peer"
+                        type="text"
+                        value={newOrderClient}
+                        onChange={(e) => setNewOrderClient(e.target.value)}
+                        placeholder="e.g. VIP_7788***"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                        required
                       />
-                      <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-                    </label>
-                  </div>
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-2">
-                      Custom Promotional Announcement Text:
-                    </label>
-                    <textarea
-                      value={customAnnouncement}
-                      onChange={(e) => setCustomAnnouncement(e.target.value)}
-                      rows={3}
-                      className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
-                      placeholder="Enter promotional banner message..."
-                    />
-                  </div>
+                    <div>
+                      <label className="text-[11px] text-slate-400 block mb-1">Service Type</label>
+                      <select
+                        value={newOrderService}
+                        onChange={(e) => setNewOrderService(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                      >
+                        <option value="Telegram Channel Growth">Telegram Channel Growth</option>
+                        <option value="Gambling Ad Traffic">Gambling Ad Traffic</option>
+                        <option value="Meta Ads & YouTube Push">Meta Ads & YouTube Push</option>
+                        <option value="Crypto Token Trending">Crypto Token Trending</option>
+                        <option value="Agency Reseller Package">Agency Reseller Package</option>
+                      </select>
+                    </div>
 
-                  {/* Preset quick buttons */}
-                  <div>
-                    <label className="block text-[11px] text-slate-400 mb-1.5 font-medium">Quick Presets:</label>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setCustomAnnouncement('🔥 Flash Deal: Extra 20% Reach on All Telegram & Gambling Campaigns Booked Today!')}
-                        className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-300 hover:text-emerald-400"
+                    <div>
+                      <label className="text-[11px] text-slate-400 block mb-1">Volume / Reach</label>
+                      <input
+                        type="text"
+                        value={newOrderVolume}
+                        onChange={(e) => setNewOrderVolume(e.target.value)}
+                        placeholder="10,000 Members"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-slate-400 block mb-1">Amount ($ USD)</label>
+                      <input
+                        type="number"
+                        value={newOrderAmount}
+                        onChange={(e) => setNewOrderAmount(e.target.value)}
+                        placeholder="149"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-slate-400 block mb-1">Status</label>
+                      <select
+                        value={newOrderStatus}
+                        onChange={(e) => setNewOrderStatus(e.target.value as any)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
                       >
-                        Flash 20% Extra
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCustomAnnouncement('⚡ Instant Launch: Direct FTD Casino Traffic Slots Open for Tier-1 & Tier-2 GEOs.')}
-                        className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-300 hover:text-emerald-400"
-                      >
-                        Casino Direct FTD
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCustomAnnouncement('🚀 Crypto Special: DexScreener Top Trending + 10,000 Verified Holder Package Available.')}
-                        className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-300 hover:text-emerald-400"
-                      >
-                        Crypto Trending
-                      </button>
+                        <option value="Completed">Completed</option>
+                        <option value="Delivering">Delivering</option>
+                        <option value="In Queue">In Queue</option>
+                        <option value="Active">Active</option>
+                      </select>
                     </div>
                   </div>
 
-                  <div className="pt-2 flex items-center gap-3">
+                  <div className="flex justify-end pt-1">
                     <button
-                      onClick={handleSaveAnnouncement}
-                      className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                      type="submit"
+                      className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md transition-all cursor-pointer"
                     >
-                      <Check className="w-4 h-4" />
-                      <span>Save & Publish Announcement</span>
+                      Add Order to Ledger
                     </button>
-
-                    {savedSuccess && (
-                      <span className="text-xs text-emerald-400 font-semibold animate-in fade-in">
-                        ✓ Published live to website!
-                      </span>
-                    )}
                   </div>
+                </form>
+
+                {/* Orders list */}
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/60 overflow-hidden">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-800 bg-slate-900/80 text-slate-400 font-mono">
+                        <th className="p-3">Order ID</th>
+                        <th className="p-3">Client</th>
+                        <th className="p-3">Service</th>
+                        <th className="p-3">Volume</th>
+                        <th className="p-3">Amount</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-900 text-slate-300">
+                      {ledgerOrders.map((order) => (
+                        <tr key={order.id} className="hover:bg-slate-900/40">
+                          <td className="p-3 font-mono text-slate-400">{order.id}</td>
+                          <td className="p-3 font-semibold text-white">{order.clientMask}</td>
+                          <td className="p-3">{order.serviceCategory}</td>
+                          <td className="p-3 font-mono text-cyan-400">{order.volume}</td>
+                          <td className="p-3 font-bold text-emerald-400">${order.amountUsd}</td>
+                          <td className="p-3">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950/80 border border-emerald-800 text-emerald-300">
+                              {order.status}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right">
+                            {onDeleteLedgerOrder && (
+                              <button
+                                onClick={() => onDeleteLedgerOrder(order.id)}
+                                className="p-1 rounded bg-rose-950/40 border border-rose-800/60 hover:bg-rose-900 text-rose-300 transition-colors cursor-pointer"
+                                title="Delete Order"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
 
-            {/* Tab 3: Security & Change Password (NEW) */}
-            {activeTab === 'security' && (
-              <div className="flex-1 p-6 overflow-y-auto space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  
-                  {/* Left 2 Cols: Change Password Form */}
-                  <div className="md:col-span-2 p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-5">
-                    <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                        <KeyRound className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-white font-display">
-                          Change Administrative Master Passcode
-                        </h4>
-                        <p className="text-xs text-slate-400">
-                          Update the security key required to access this admin portal.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Success Alert */}
-                    {changePassSuccess && (
-                      <div className="p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex items-center gap-2 text-xs text-emerald-300 animate-in fade-in">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                        <span>Passcode updated successfully! Your new credentials are now active on this device.</span>
-                      </div>
-                    )}
-
-                    {/* Error Alert */}
-                    {changePassError && (
-                      <div className="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/40 flex items-center gap-2 text-xs text-rose-300 animate-in fade-in">
-                        <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                        <span>{changePassError}</span>
-                      </div>
-                    )}
-
-                    <form onSubmit={handleChangePassword} className="space-y-4">
-                      {/* Current Passcode */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                          Current Passcode
-                        </label>
-                        <div className="relative">
-                          <input
-                            type={showCurrentPass ? 'text' : 'password'}
-                            value={currentPasscode}
-                            onChange={(e) => setCurrentPasscode(e.target.value)}
-                            placeholder="Enter current passcode..."
-                            required
-                            className="w-full pl-4 pr-11 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowCurrentPass(!showCurrentPass)}
-                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer"
-                          >
-                            {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* New Passcode */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                          New Passcode
-                        </label>
-                        <div className="relative">
-                          <input
-                            type={showNewPass ? 'text' : 'password'}
-                            value={newPasscode}
-                            onChange={(e) => setNewPasscode(e.target.value)}
-                            placeholder="Enter new passcode (min 4 characters)..."
-                            required
-                            className="w-full pl-4 pr-11 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowNewPass(!showNewPass)}
-                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer"
-                          >
-                            {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                        <p className="text-[11px] text-slate-500 mt-1">
-                          Must be at least 4 characters. Keep it secure and memorable.
-                        </p>
-                      </div>
-
-                      {/* Confirm New Passcode */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                          Confirm New Passcode
-                        </label>
-                        <div className="relative">
-                          <input
-                            type={showConfirmPass ? 'text' : 'password'}
-                            value={confirmPasscode}
-                            onChange={(e) => setConfirmPasscode(e.target.value)}
-                            placeholder="Re-enter new passcode to confirm..."
-                            required
-                            className="w-full pl-4 pr-11 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowConfirmPass(!showConfirmPass)}
-                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer"
-                          >
-                            {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="pt-2 flex items-center gap-3">
-                        <button
-                          type="submit"
-                          className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
-                        >
-                          <KeyRound className="w-3.5 h-3.5" />
-                          <span>Update Passcode Now</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleResetPasswordToDefault}
-                          className="px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[11px] text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-                          title="Reset to default initial code"
-                        >
-                          Reset to Default
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-
-                  {/* Right Col: Security Status & Session Lock */}
-                  <div className="space-y-4">
-                    <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                      <div className="flex items-center gap-2 text-xs font-bold text-white">
-                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                        <span>Security Status</span>
-                      </div>
-                      
-                      <div className="space-y-2 text-xs">
-                        <div className="p-2.5 rounded-lg bg-slate-900/70 border border-slate-800">
-                          <span className="text-[10px] text-slate-400 block">Protection Level</span>
-                          <span className="text-emerald-400 font-bold font-mono">STAFF PRIVILEGED</span>
-                        </div>
-                        <div className="p-2.5 rounded-lg bg-slate-900/70 border border-slate-800">
-                          <span className="text-[10px] text-slate-400 block">Passcode Storage</span>
-                          <span className="text-slate-200 font-mono">Encrypted Local Vault</span>
-                        </div>
-                        <div className="p-2.5 rounded-lg bg-slate-900/70 border border-slate-800">
-                          <span className="text-[10px] text-slate-400 block">Public Masking</span>
-                          <span className="text-emerald-400 font-semibold">Active (Hidden from UI)</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                      <div className="flex items-center gap-2 text-xs font-bold text-white">
-                        <ShieldAlert className="w-4 h-4 text-amber-400" />
-                        <span>Session Lock</span>
-                      </div>
-                      <p className="text-[11px] text-slate-400 leading-relaxed">
-                        Lock session to test your new passcode or prevent unauthorized access on this device.
-                      </p>
-                      <button
-                        onClick={() => {
-                          setIsAuthenticated(false);
-                          setPasscode('');
-                        }}
-                        className="w-full py-2 rounded-xl bg-slate-900 hover:bg-rose-950/60 border border-slate-800 hover:border-rose-700/50 text-slate-300 hover:text-rose-300 font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <Lock className="w-3.5 h-3.5" />
-                        <span>Lock Admin Session</span>
-                      </button>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-            )}
-
-            {/* Tab 4: Overview & Metrics */}
-            {activeTab === 'overview' && (
-              <div className="flex-1 p-6 overflow-y-auto space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800">
-                    <span className="text-[11px] font-mono text-slate-400 uppercase font-bold block mb-1">
-                      Total Pipeline Inquiries
-                    </span>
-                    <span className="text-3xl font-extrabold text-white font-display">
-                      {inquiries.length}
-                    </span>
-                    <p className="text-[11px] text-emerald-400 mt-1">
-                      {inquiries.filter((i) => i.status === 'New').length} pending review
-                    </p>
-                  </div>
-
-                  <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800">
-                    <span className="text-[11px] font-mono text-slate-400 uppercase font-bold block mb-1">
-                      Platform Security
-                    </span>
-                    <span className="text-3xl font-extrabold text-cyan-400 font-display">
-                      Active
-                    </span>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Admin password protected
-                    </p>
-                  </div>
-
-                  <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800">
-                    <span className="text-[11px] font-mono text-slate-400 uppercase font-bold block mb-1">
-                      Global Agency Conversion
-                    </span>
-                    <span className="text-3xl font-extrabold text-emerald-400 font-display">
-                      99.8%
-                    </span>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Anti-drop warranty active
-                    </p>
-                  </div>
-                </div>
-
-                {/* Direct Agency Credentials & Desks */}
-                <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
-                  <h4 className="text-sm font-bold text-white font-display">
-                    Agency Routing Desks
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
-                      <div>
-                        <span className="text-slate-400 block text-[11px]">Primary Telegram Lead Desk</span>
-                        <span className="text-sky-400 font-bold">t.me/PREMGUPTA2M</span>
-                      </div>
-                      <a href="https://t.me/PREMGUPTA2M" target="_blank" rel="noreferrer" className="p-1.5 rounded-lg bg-sky-500/20 text-sky-400">
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </div>
-
-                    <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
-                      <div>
-                        <span className="text-slate-400 block text-[11px]">Direct WhatsApp Escalation</span>
-                        <span className="text-emerald-400 font-bold">+91 7004166377</span>
-                      </div>
-                      <a href="https://wa.me/917004166377" target="_blank" rel="noreferrer" className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
-        {/* Selected Inquiry Detail Modal */}
-        {selectedInquiry && (
-          <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="w-full max-w-md bg-slate-900 border border-emerald-500/40 rounded-2xl p-6 shadow-2xl space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-base font-bold text-white font-display">
-                  Inquiry: {selectedInquiry.name}
+      </div>
+
+      {/* Inquiry Detail Modal */}
+      {selectedInquiry && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-[#0b101c] border border-slate-700 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h4 className="font-bold text-white font-display text-base">
+                  {selectedInquiry.name}
                 </h4>
-                <button
-                  onClick={() => setSelectedInquiry(null)}
-                  className="p-1 text-slate-400 hover:text-white cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <span className="text-[11px] font-mono text-slate-400">
+                  {selectedInquiry.id} • {selectedInquiry.timestamp}
+                </span>
+              </div>
+              <button
+                onClick={() => setSelectedInquiry(null)}
+                className="p-1 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                <span className="text-slate-400 block mb-0.5">Contact Handle / Phone</span>
+                <span className="text-emerald-400 font-mono font-bold text-sm select-all">
+                  {selectedInquiry.contact}
+                </span>
               </div>
 
-              <div className="space-y-2 text-xs text-slate-300">
-                <p><strong className="text-slate-400">Contact:</strong> {selectedInquiry.contact}</p>
-                <p><strong className="text-slate-400">Service Category:</strong> {selectedInquiry.category}</p>
-                <p><strong className="text-slate-400">Budget:</strong> {selectedInquiry.budget}</p>
-                <p><strong className="text-slate-400">Timestamp:</strong> {selectedInquiry.timestamp}</p>
-                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 mt-2">
-                  <span className="text-[11px] text-slate-400 font-bold block mb-1">Message / Requirements:</span>
-                  <p className="text-xs text-slate-200 leading-relaxed">{selectedInquiry.message}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                  <span className="text-slate-400 block mb-0.5">Category</span>
+                  <span className="text-white font-semibold">
+                    {selectedInquiry.category}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                  <span className="text-slate-400 block mb-0.5">Budget</span>
+                  <span className="text-amber-300 font-bold">
+                    {selectedInquiry.budget}
+                  </span>
                 </div>
               </div>
 
-              <div className="pt-2 flex justify-end">
+              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                <span className="text-slate-400 block mb-1">Client Message / Notes</span>
+                <p className="text-slate-200 leading-relaxed">
+                  {selectedInquiry.message}
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-2 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
-                  onClick={() => setSelectedInquiry(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-white text-xs font-semibold hover:bg-slate-700 cursor-pointer"
+                  type="button"
+                  onClick={() => {
+                    const inq = selectedInquiry;
+                    setSelectedInquiry(null);
+                    handleOpenEmailTemplate(inq);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-950/80 border border-emerald-600/60 hover:bg-emerald-900 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
                 >
-                  Close
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Email Response</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const inq = selectedInquiry;
+                    setSelectedInquiry(null);
+                    setInvoiceInquiryTarget(inq);
+                    setActiveTab('invoices');
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-amber-950/80 border border-amber-600/60 hover:bg-amber-900 text-amber-300 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Receipt className="w-3.5 h-3.5" />
+                  <span>Generate Invoice</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(selectedInquiry.contact);
+                    alert(`Copied contact: ${selectedInquiry.contact}`);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold cursor-pointer"
+                >
+                  Copy Contact
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedInquiry(null)}
+                  className="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold cursor-pointer"
+                >
+                  Done
                 </button>
               </div>
             </div>
           </div>
-        )}
-
-        {/* Footer info */}
-        <div className="px-6 py-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-500 shrink-0">
-          <span className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Session protected with SSL/TLS & Local Vault</span>
-          </span>
-          {isAuthenticated && (
-            <button
-              onClick={() => {
-                setIsAuthenticated(false);
-                setPasscode('');
-              }}
-              className="text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
-            >
-              Sign Out from Admin
-            </button>
-          )}
         </div>
+      )}
 
-      </div>
+      {/* Pre-filled Email Template Response Generator Modal */}
+      {emailInquiry && (
+        <div className="fixed inset-0 z-70 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-2xl max-h-[92vh] flex flex-col bg-[#0b101c] border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/80 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-white font-display text-sm">
+                      Client Response Email Generator
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-slate-800 text-emerald-400 border border-slate-700">
+                      {emailInquiry.id}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Pre-filled proposal tailored for <span className="text-slate-200 font-semibold">{emailInquiry.name}</span> • Budget: <span className="text-amber-300 font-semibold">{emailInquiry.budget}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEmailInquiry(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Form Content */}
+            <div className="flex-1 p-4 sm:p-5 overflow-y-auto space-y-4 text-xs">
+              {/* Category Selector Banner */}
+              <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <label className="text-xs font-semibold text-white block">
+                      Target Service Category
+                    </label>
+                    <span className="text-[11px] text-slate-400">
+                      Change category to instantly recalibrate strategy, deliverables & timeline
+                    </span>
+                  </div>
+                  <select
+                    value={emailCategory}
+                    onChange={(e) => handleCategoryChangeForEmail(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-950 border border-emerald-500/40 text-xs font-semibold text-emerald-300 focus:outline-none cursor-pointer"
+                  >
+                    {AVAILABLE_SERVICE_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Recipient & Subject */}
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-semibold text-slate-300">
+                      Recipient Email Address (To:)
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Client Contact: {emailInquiry.contact}
+                    </span>
+                  </div>
+                  <input
+                    type="email"
+                    value={emailRecipient}
+                    onChange={(e) => setEmailRecipient(e.target.value)}
+                    placeholder="Enter client email address (e.g. client@company.com)..."
+                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white font-mono placeholder:text-slate-600 focus:border-emerald-500 focus:outline-none"
+                  />
+                  {!emailRecipient && (
+                    <p className="text-[10px] text-amber-400/80 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      Client provided a handle/number ({emailInquiry.contact}). You can input their email or copy text directly for Telegram/WhatsApp.
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-semibold text-slate-300">
+                      Email Subject Line
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyEmail('subject')}
+                      className="text-[10px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-semibold cursor-pointer"
+                    >
+                      {emailCopied === 'subject' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      <span>{emailCopied === 'subject' ? 'Copied!' : 'Copy Subject'}</span>
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Email Body */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-semibold text-slate-300">
+                    Email Proposal Body (Editable)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyEmail('body')}
+                    className="text-[10px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-semibold cursor-pointer"
+                  >
+                    {emailCopied === 'body' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    <span>{emailCopied === 'body' ? 'Copied!' : 'Copy Body'}</span>
+                  </button>
+                </div>
+                <textarea
+                  rows={13}
+                  value={emailBody}
+                  onChange={(e) => setEmailBody(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] sm:text-xs text-slate-200 font-mono leading-relaxed focus:border-emerald-500 focus:outline-none resize-y"
+                />
+              </div>
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className="p-4 border-t border-slate-800 bg-slate-900/80 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleMarkAsContacted}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    emailInquiry.status === 'Contacted'
+                      ? 'bg-amber-950/60 border border-amber-600/50 text-amber-300'
+                      : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700'
+                  }`}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{emailInquiry.status === 'Contacted' ? 'Status: Contacted' : 'Mark as Contacted'}</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleCopyEmail('all')}
+                  className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm border border-slate-700"
+                >
+                  {emailCopied === 'all' ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400 font-bold">Copied Full Email!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Copy Full Email</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSendViaMailClient}
+                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/10 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Open in Mail App</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
