@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import { 
   Calculator, 
-  Sparkles, 
   Clock, 
   ShieldCheck, 
   Flame, 
   ArrowRight, 
-  CheckCircle2,
-  TrendingUp,
   Coins
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Language, Currency } from '../types';
 import { TRANSLATIONS } from '../data/translations';
 import { CURRENCY_CONFIG, formatPrice } from '../utils/currency';
@@ -138,11 +136,17 @@ export const CampaignEstimator: React.FC<CampaignEstimatorProps> = ({
   };
 
   return (
-    <section id="estimator" className="py-16 sm:py-24 bg-[#090D17] border-y border-slate-800/80 relative">
+    <section id="estimator" className="py-16 sm:py-24 bg-[#090D17] border-y border-slate-800/80 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-12">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="text-center max-w-3xl mx-auto mb-12"
+        >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-bold tracking-wider uppercase mb-3">
             <Calculator className="w-3.5 h-3.5" />
             <span>{t.estimator.badge}</span>
@@ -153,10 +157,16 @@ export const CampaignEstimator: React.FC<CampaignEstimatorProps> = ({
           <p className="text-slate-400 mt-2 text-sm sm:text-base">
             {t.estimator.subtitle}
           </p>
-        </div>
+        </motion.div>
 
         {/* Estimator Interactive Shell */}
-        <div className="max-w-4xl mx-auto bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.15 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="max-w-4xl mx-auto bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md smooth-card transform-gpu"
+        >
           {/* Subtle neon glow in corner */}
           <div className="absolute top-0 right-0 w-72 h-72 bg-emerald-500/10 blur-3xl pointer-events-none" />
 
@@ -168,8 +178,10 @@ export const CampaignEstimator: React.FC<CampaignEstimatorProps> = ({
               </span>
               <div className="flex flex-wrap gap-2">
                 {Object.values(CATEGORY_CONFIGS).map((cat) => (
-                  <button
+                  <motion.button
                     key={cat.id}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
                     onClick={() => handleCategorySwitch(cat.id)}
                     className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                       currentCategory.id === cat.id
@@ -178,7 +190,7 @@ export const CampaignEstimator: React.FC<CampaignEstimatorProps> = ({
                     }`}
                   >
                     {cat.name.split(' ')[0]} {cat.name.split(' ')[1] || ''}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
@@ -241,7 +253,10 @@ export const CampaignEstimator: React.FC<CampaignEstimatorProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             
             {/* Cost Block */}
-            <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/30">
+            <motion.div
+              whileHover={{ y: -3 }}
+              className="p-5 rounded-2xl bg-gradient-to-br from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/30 smooth-card transform-gpu"
+            >
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 block mb-1">
                 {t.estimator.estimatedCost}
               </span>
@@ -251,10 +266,13 @@ export const CampaignEstimator: React.FC<CampaignEstimatorProps> = ({
               <span className="text-[11px] text-slate-400 block mt-1">
                 Transparent flat pricing, all-inclusive
               </span>
-            </div>
+            </motion.div>
 
             {/* Bonus Reach Block */}
-            <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800">
+            <motion.div
+              whileHover={{ y: -3 }}
+              className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 smooth-card transform-gpu"
+            >
               <div className="flex items-center gap-1.5 mb-1">
                 <Flame className="w-4 h-4 text-amber-400" />
                 <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
@@ -267,10 +285,13 @@ export const CampaignEstimator: React.FC<CampaignEstimatorProps> = ({
               <span className="text-[11px] text-slate-400 block mt-1">
                 {t.estimator.bonusReach}
               </span>
-            </div>
+            </motion.div>
 
             {/* Delivery Speed Block */}
-            <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800">
+            <motion.div
+              whileHover={{ y: -3 }}
+              className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 smooth-card transform-gpu"
+            >
               <div className="flex items-center gap-1.5 mb-1">
                 <Clock className="w-4 h-4 text-cyan-400" />
                 <span className="text-xs font-bold uppercase tracking-wider text-cyan-400">
@@ -283,7 +304,7 @@ export const CampaignEstimator: React.FC<CampaignEstimatorProps> = ({
               <span className="text-[11px] text-slate-400 block mt-1">
                 Starts in 15-30 mins after booking
               </span>
-            </div>
+            </motion.div>
 
           </div>
 
@@ -294,21 +315,23 @@ export const CampaignEstimator: React.FC<CampaignEstimatorProps> = ({
               <span>{t.estimator.guarantee}</span>
             </div>
 
-            <button
+            <motion.button
               id="estimator-book-now-btn"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={handleBookNow}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_25px_rgba(16,185,129,0.55)] transition-all cursor-pointer active:scale-98"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_25px_rgba(16,185,129,0.55)] transition-shadow cursor-pointer"
             >
               <span>{t.estimator.bookThisPackage}</span>
               <ArrowRight className="w-4 h-4" />
-            </button>
+            </motion.button>
           </div>
 
           <p className="text-center text-xs text-slate-500 mt-4">
             {t.estimator.customRequirement}
           </p>
 
-        </div>
+        </motion.div>
 
       </div>
     </section>

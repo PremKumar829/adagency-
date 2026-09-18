@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Sparkles
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { Language, Currency, ClientInquiry, GoalMessageConfig, AgencySettings } from '../types';
 import { TRANSLATIONS } from '../data/translations';
 import { ClientGoalMessageBuilder } from './ClientGoalMessageBuilder';
@@ -147,11 +148,17 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
   };
 
   return (
-    <section id="contact" className="py-16 sm:py-24 bg-[#090D16] border-t border-slate-800/80 relative">
+    <section id="contact" className="py-16 sm:py-24 bg-[#090D16] border-t border-slate-800/80 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="text-center max-w-3xl mx-auto"
+        >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold tracking-wider uppercase mb-3">
             <MessageSquare className="w-3.5 h-3.5" />
             <span>{t.contact.badge}</span>
@@ -162,7 +169,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
           <p className="text-slate-400 mt-2 text-sm sm:text-base">
             {t.contact.subtitle}
           </p>
-        </div>
+        </motion.div>
 
         {/* Dynamic Client-Goal Message Generator Widget */}
         <ClientGoalMessageBuilder
@@ -175,7 +182,13 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           
           {/* Left: Contact Info Cards */}
-          <div className="lg:col-span-5 space-y-6">
+          <motion.div
+            initial={{ opacity: 0, x: -24 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="lg:col-span-5 space-y-6"
+          >
             <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-6">
               <h3 className="text-xl font-bold text-white font-display mb-4">
                 {t.contact.orDirect}
@@ -355,11 +368,17 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                 Fast Track
               </a>
             </div>
-          </div>
+          </motion.div>
 
           {/* Right: Interactive Inquiry Form */}
-          <div className="lg:col-span-7">
-            <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-md">
+          <motion.div
+            initial={{ opacity: 0, x: 24 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="lg:col-span-7"
+          >
+            <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-md smooth-card transform-gpu">
               <h3 className="text-xl sm:text-2xl font-bold text-white font-display mb-1">
                 {t.contact.formTitle}
               </h3>
@@ -494,10 +513,12 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
 
                   {/* Submit CTA & Security notice */}
                   <div className="pt-2">
-                    <button
+                    <motion.button
                       type="submit"
                       disabled={submitting}
-                      className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-70 text-slate-950 font-bold text-sm shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all cursor-pointer flex items-center justify-center gap-2"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-70 text-slate-950 font-bold text-sm shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-shadow cursor-pointer flex items-center justify-center gap-2"
                     >
                       {submitting ? (
                         <span>{t.contact.submitting}</span>
@@ -507,7 +528,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                           <ArrowRight className="w-4 h-4" />
                         </>
                       )}
-                    </button>
+                    </motion.button>
                   </div>
 
                   <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
@@ -521,7 +542,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
               )}
 
             </div>
-          </div>
+          </motion.div>
 
         </div>
 

@@ -1,5 +1,6 @@
 import React from 'react';
-import { TrendingUp, BarChart3, ArrowUpRight, Award, ShieldCheck } from 'lucide-react';
+import { TrendingUp, ArrowUpRight, Award } from 'lucide-react';
+import { motion } from 'motion/react';
 import { Language, CaseStudy } from '../types';
 import { TRANSLATIONS } from '../data/translations';
 import { CASE_STUDIES_DATA } from '../data/caseStudiesData';
@@ -16,11 +17,17 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
   const t = TRANSLATIONS[language];
 
   return (
-    <section id="case-studies" className="py-16 sm:py-24 bg-[#080C14] relative">
+    <section id="case-studies" className="py-16 sm:py-24 bg-[#080C14] relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="text-center max-w-3xl mx-auto mb-16"
+        >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-400 text-xs font-bold tracking-wider uppercase mb-3">
             <Award className="w-3.5 h-3.5" />
             <span>{t.caseStudies.badge}</span>
@@ -31,18 +38,23 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
           <p className="text-slate-400 mt-2 text-sm sm:text-base">
             {t.caseStudies.subtitle}
           </p>
-        </div>
+        </motion.div>
 
         {/* Case Studies Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {CASE_STUDIES_DATA.map((study) => {
+          {CASE_STUDIES_DATA.map((study, studyIdx) => {
             const maxPoint = Math.max(...study.chartPoints);
 
             return (
-              <div
+              <motion.div
                 key={study.id}
                 id={`case-study-${study.id}`}
-                className="flex flex-col justify-between p-6 sm:p-7 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-teal-500/40 transition-all duration-300 shadow-xl group hover:-translate-y-1"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.6, delay: studyIdx * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                whileHover={{ y: -6 }}
+                className="flex flex-col justify-between p-6 sm:p-7 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-teal-500/40 transition-colors duration-300 shadow-xl group smooth-card transform-gpu"
               >
                 <div>
                   {/* Category & Duration Tag */}
@@ -63,7 +75,7 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
                     {study.clientType}
                   </span>
 
-                  {/* Mini Visual Growth Graph Bars */}
+                  {/* Mini Visual Growth Graph Bars with smooth scroll fill animation */}
                   <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/80 mb-6">
                     <div className="flex items-end justify-between h-24 gap-2 pt-2">
                       {study.chartPoints.map((val, idx) => {
@@ -71,9 +83,12 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
                         const isLast = idx === study.chartPoints.length - 1;
                         return (
                           <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-                            <div
-                              style={{ height: `${heightPct}%` }}
-                              className={`w-full rounded-t-sm transition-all duration-500 ${
+                            <motion.div
+                              initial={{ height: 0 }}
+                              whileInView={{ height: `${heightPct}%` }}
+                              viewport={{ once: true, amount: 0.3 }}
+                              transition={{ duration: 0.7, delay: idx * 0.08, ease: 'easeOut' }}
+                              className={`w-full rounded-t-sm ${
                                 isLast
                                   ? 'bg-gradient-to-t from-teal-500 to-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.5)]'
                                   : 'bg-slate-700/60 group-hover:bg-slate-600/70'
@@ -129,15 +144,16 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
                     </div>
                   </div>
 
-                  <button
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => onSelectCaseStudy(study)}
                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors cursor-pointer border border-slate-700"
                   >
                     <span>{study.roi}</span>
                     <ArrowUpRight className="w-3.5 h-3.5 text-teal-400" />
-                  </button>
+                  </motion.button>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>

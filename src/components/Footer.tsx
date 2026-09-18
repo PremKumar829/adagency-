@@ -19,10 +19,11 @@ import { buildWhatsAppLink, buildTelegramLink, getEffectiveWhatsappNumber } from
 interface FooterProps {
   language: Language;
   onOpenAdmin?: () => void;
+  onOpenInvoice?: () => void;
   agencySettings?: AgencySettings;
 }
 
-export const Footer: React.FC<FooterProps> = ({ language, onOpenAdmin, agencySettings }) => {
+export const Footer: React.FC<FooterProps> = ({ language, onOpenAdmin, onOpenInvoice, agencySettings }) => {
   const t = TRANSLATIONS[language];
   const [secretClickCount, setSecretClickCount] = useState(0);
 
@@ -127,6 +128,17 @@ export const Footer: React.FC<FooterProps> = ({ language, onOpenAdmin, agencySet
                   {t.nav.contact}
                 </a>
               </li>
+              {onOpenInvoice && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={onOpenInvoice}
+                    className="text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Download Invoice / Receipt</span>
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
 
@@ -212,28 +224,22 @@ export const Footer: React.FC<FooterProps> = ({ language, onOpenAdmin, agencySet
           </div>
         </div>
 
-        {/* Bottom copyright & Discreet Admin Access */}
+        {/* Bottom copyright & Admin Access */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span>© {new Date().getFullYear()} {brandName}. All rights reserved.</span>
             <span className="text-slate-700">•</span>
-            <span 
-              onClick={() => {
-                if (onOpenAdmin) {
-                  setSecretClickCount((prev) => {
-                    if (prev + 1 >= 3) {
-                      onOpenAdmin();
-                      return 0;
-                    }
-                    return prev + 1;
-                  });
-                }
-              }}
-              className="select-none cursor-default hover:text-slate-400 transition-colors"
-              title=""
-            >
-              Team PrimeX Authorized
-            </span>
+            {onOpenAdmin && (
+              <button
+                type="button"
+                onClick={onOpenAdmin}
+                className="inline-flex items-center gap-1 text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer"
+                title="Admin Control Panel"
+              >
+                <Lock className="w-3 h-3 text-emerald-500" />
+                <span>Admin Login</span>
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-4">

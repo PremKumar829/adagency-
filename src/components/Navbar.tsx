@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Menu, X, Rocket, Coins } from 'lucide-react';
+import { ShieldCheck, Menu, X, Rocket, Coins, Lock, Receipt } from 'lucide-react';
 import { Language, Currency, AgencySettings } from '../types';
 import { TRANSLATIONS } from '../data/translations';
 import { CURRENCY_CONFIG } from '../utils/currency';
@@ -10,6 +10,7 @@ interface NavbarProps {
   onCurrencyChange: (cur: Currency) => void;
   onOpenLaunchModal: () => void;
   onOpenAdmin?: () => void;
+  onOpenInvoice?: () => void;
   agencySettings?: AgencySettings;
 }
 
@@ -19,6 +20,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onCurrencyChange,
   onOpenLaunchModal,
   onOpenAdmin,
+  onOpenInvoice,
   agencySettings,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -123,6 +125,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
+            {/* Invoice Download Action */}
+            {onOpenInvoice && (
+              <button
+                type="button"
+                onClick={onOpenInvoice}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-emerald-400 border border-slate-800 hover:border-emerald-500/40 text-xs font-semibold transition-all cursor-pointer shadow-sm"
+                title="Download or Verify Tax Invoice"
+              >
+                <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Invoices</span>
+              </button>
+            )}
+
             {/* Launch Campaign Button */}
             <button
               id="nav-launch-campaign-btn"
@@ -132,6 +147,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Rocket className="w-4 h-4 text-slate-950 group-hover:rotate-12 transition-transform duration-300" />
               <span>{t.nav.launchCampaign}</span>
             </button>
+
+            {/* Admin Control Button */}
+            {onOpenAdmin && (
+              <button
+                type="button"
+                onClick={onOpenAdmin}
+                className="p-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-emerald-400 border border-slate-800 transition-colors cursor-pointer"
+                title="Admin Control Panel"
+                aria-label="Admin Control Panel"
+              >
+                <Lock className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Mobile Menu Hamburger */}
@@ -202,6 +230,35 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Rocket className="w-4 h-4 text-slate-950" />
               <span>{t.nav.launchCampaign}</span>
             </button>
+
+            {/* Mobile Invoice Download */}
+            {onOpenInvoice && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenInvoice();
+                }}
+                className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-emerald-400 text-xs font-semibold border border-slate-800 flex items-center justify-center gap-2 cursor-pointer transition-colors"
+              >
+                <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Download / Verify Invoice</span>
+              </button>
+            )}
+
+            {onOpenAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenAdmin();
+                }}
+                className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-emerald-400 text-xs font-semibold border border-slate-800 flex items-center justify-center gap-2 cursor-pointer transition-colors"
+              >
+                <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Admin Login</span>
+              </button>
+            )}
           </div>
         </div>
       )}

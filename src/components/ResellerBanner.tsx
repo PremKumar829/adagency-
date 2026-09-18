@@ -1,5 +1,6 @@
 import React from 'react';
 import { Briefcase, CheckCircle, ArrowRight, ShieldCheck, Zap, Send } from 'lucide-react';
+import { motion } from 'motion/react';
 import { Language } from '../types';
 import { TRANSLATIONS } from '../data/translations';
 
@@ -15,11 +16,17 @@ export const ResellerBanner: React.FC<ResellerBannerProps> = ({
   const t = TRANSLATIONS[language];
 
   return (
-    <section id="reseller" className="py-16 sm:py-20 bg-[#080C14] relative">
+    <section id="reseller" className="py-16 sm:py-20 bg-[#080C14] relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Banner Container */}
-        <div className="relative rounded-3xl bg-gradient-to-r from-slate-900 via-[#0D1524] to-slate-900 border border-emerald-500/30 p-8 sm:p-12 shadow-2xl overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 30, scale: 0.98 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+          className="relative rounded-3xl bg-gradient-to-r from-slate-900 via-[#0D1524] to-slate-900 border border-emerald-500/30 p-8 sm:p-12 shadow-2xl overflow-hidden smooth-card transform-gpu"
+        >
           {/* Neon background effect */}
           <div className="absolute -top-24 -right-24 w-96 h-96 bg-emerald-500/10 blur-[100px] pointer-events-none rounded-full" />
           <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-cyan-500/10 blur-[100px] pointer-events-none rounded-full" />
@@ -77,16 +84,20 @@ export const ResellerBanner: React.FC<ResellerBannerProps> = ({
               </div>
 
               <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 w-full sm:w-auto">
-                <button
+                <motion.button
                   id="reseller-apply-btn"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
                   onClick={onApplyReseller}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm tracking-wide shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all cursor-pointer"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm tracking-wide shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-shadow cursor-pointer"
                 >
                   <span>{t.reseller.cta}</span>
                   <ArrowRight className="w-4 h-4" />
-                </button>
+                </motion.button>
 
-                <a
+                <motion.a
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   href="https://t.me/PREMGUPTA2M"
                   target="_blank"
                   rel="noreferrer"
@@ -94,12 +105,12 @@ export const ResellerBanner: React.FC<ResellerBannerProps> = ({
                 >
                   <Send className="w-3.5 h-3.5 text-sky-400" />
                   <span>Direct Partner Telegram</span>
-                </a>
+                </motion.a>
               </div>
             </div>
 
           </div>
-        </div>
+        </motion.div>
 
       </div>
     </section>

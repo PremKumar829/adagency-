@@ -17,10 +17,16 @@ import {
   Hash, 
   ExternalLink,
   ChevronRight,
-  Eye
+  Eye,
+  Download,
+  Image as ImageIcon,
+  FileDown,
+  Loader2,
+  Share2
 } from 'lucide-react';
 import { CustomInvoice, InvoiceItem, AgencySettings, ClientInquiry } from '../types';
 import { AVAILABLE_SERVICE_CATEGORIES, detectServiceCategory } from '../utils/emailTemplateGenerator';
+import { downloadInvoiceAsPDF, downloadInvoiceAsImage, downloadInvoiceAsText } from '../utils/invoiceExporter';
 
 interface InvoiceGeneratorProps {
   agencySettings: AgencySettings;
@@ -42,6 +48,11 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
   const [savedInvoices, setSavedInvoices] = useState<CustomInvoice[]>([]);
   const [copiedReceipt, setCopiedReceipt] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Download & Export state
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [downloadFeedback, setDownloadFeedback] = useState<string | null>(null);
 
   // Generate Default Invoice
   const createDefaultInvoice = (inq?: ClientInquiry | null): CustomInvoice => {
@@ -288,14 +299,63 @@ _Thank you for choosing ${invoice.agencyName}!_`;
     window.print();
   };
 
+  // Direct High-Resolution PDF Download
+  const handleDownloadPDF = async () => {
+    setIsGeneratingPdf(true);
+    setDownloadFeedback('Generating PDF...');
+    try {
+      const filename = `PrimeAds_Invoice_${invoice.invoiceNumber}`;
+      const success = await downloadInvoiceAsPDF('printable-invoice', filename);
+      if (success) {
+        setDownloadFeedback('PDF Downloaded!');
+      } else {
+        setDownloadFeedback('Downloaded via Print');
+      }
+    } catch (err) {
+      console.error(err);
+      setDownloadFeedback('Download failed');
+    } finally {
+      setIsGeneratingPdf(false);
+      setTimeout(() => setDownloadFeedback(null), 3000);
+    }
+  };
+
+  // Direct Image (PNG) Download
+  const handleDownloadImage = async () => {
+    setIsGeneratingImage(true);
+    setDownloadFeedback('Generating PNG...');
+    try {
+      const filename = `PrimeAds_Invoice_${invoice.invoiceNumber}`;
+      const success = await downloadInvoiceAsImage('printable-invoice', filename);
+      if (success) {
+        setDownloadFeedback('PNG Image Saved!');
+      } else {
+        setDownloadFeedback('Image export failed');
+      }
+    } catch (err) {
+      console.error(err);
+      setDownloadFeedback('Error generating image');
+    } finally {
+      setIsGeneratingImage(false);
+      setTimeout(() => setDownloadFeedback(null), 3000);
+    }
+  };
+
+  // Direct Text Receipt Download
+  const handleDownloadText = () => {
+    downloadInvoiceAsText(invoice);
+    setDownloadFeedback('Receipt TXT Saved!');
+    setTimeout(() => setDownloadFeedback(null), 3000);
+  };
+
   const currencySymbol = invoice.currency === 'INR' ? '₹' : invoice.currency === 'USD' ? '$' : 'USDT ';
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Top Action & Sub-navigation Header */}
-      <div className="p-4 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
+      <div className="p-3 sm:p-4 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
             <Receipt className="w-5 h-5" />
           </div>
           <div>
@@ -306,12 +366,12 @@ _Thank you for choosing ${invoice.agencyName}!_`;
               </span>
             </h3>
             <p className="text-[11px] text-slate-400">
-              Create branded tax invoices, payment receipts with Prem Gupta's digital signature and transaction UTR verification.
+              Generate & download authentic tax invoices with Prem Gupta's digital signature, verification seal and UTR.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Mode switch */}
           <div className="bg-slate-900 p-1 rounded-xl border border-slate-800 flex items-center text-xs">
             <button
@@ -339,31 +399,79 @@ _Thank you for choosing ${invoice.agencyName}!_`;
             </button>
           </div>
 
+          {/* Download PDF Primary Action */}
+          <button
+            onClick={handleDownloadPDF}
+            disabled={isGeneratingPdf}
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
+            title="Download Invoice as Official PDF"
+          >
+            {isGeneratingPdf ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Download className="w-3.5 h-3.5" />
+            )}
+            <span>{isGeneratingPdf ? 'Generating PDF...' : 'Download PDF'}</span>
+          </button>
+
+          {/* Download Image Action */}
+          <button
+            onClick={handleDownloadImage}
+            disabled={isGeneratingImage}
+            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm disabled:opacity-50"
+            title="Download Invoice as PNG Image for WhatsApp/Telegram"
+          >
+            {isGeneratingImage ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+            ) : (
+              <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />
+            )}
+            <span>Download PNG</span>
+          </button>
+
+          {/* Download Text Receipt */}
+          <button
+            onClick={handleDownloadText}
+            className="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer shadow-sm"
+            title="Download TXT Receipt"
+          >
+            <FileDown className="w-3.5 h-3.5 text-teal-400" />
+            <span>.TXT</span>
+          </button>
+
           <button
             onClick={handlePrint}
-            className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
-            title="Print or Save as PDF"
+            className="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer shadow-sm"
+            title="Print Document"
           >
-            <Printer className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Print / PDF</span>
+            <Printer className="w-3.5 h-3.5 text-slate-400" />
+            <span>Print</span>
           </button>
 
           <button
             onClick={handleCopyWhatsAppReceipt}
-            className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
             title="Copy formatted receipt text for WhatsApp/Telegram"
           >
             {copiedReceipt ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-amber-400" />}
-            <span>{copiedReceipt ? 'Copied Receipt!' : 'Copy for WhatsApp'}</span>
+            <span>{copiedReceipt ? 'Copied!' : 'WhatsApp Text'}</span>
           </button>
 
           <button
             onClick={handleSaveInvoice}
-            className="px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-emerald-500/10"
+            className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
           >
-            {saveSuccess ? <Check className="w-3.5 h-3.5" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-            <span>{saveSuccess ? 'Saved to History!' : 'Save Invoice'}</span>
+            {saveSuccess ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />}
+            <span>{saveSuccess ? 'Saved!' : 'Save Invoice'}</span>
           </button>
+
+          {/* Toast feedback pill */}
+          {downloadFeedback && (
+            <div className="px-3 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold animate-in fade-in flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{downloadFeedback}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -446,10 +554,33 @@ _Thank you for choosing ${invoice.agencyName}!_`;
                               setInvoice(inv);
                               setViewMode('editor');
                             }}
-                            className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer"
-                            title="Open in Editor"
+                            className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer flex items-center gap-1 text-[11px]"
+                            title="Open & Preview in Editor"
                           >
-                            <Eye className="w-3.5 h-3.5" />
+                            <Eye className="w-3.5 h-3.5 text-cyan-400" />
+                            <span>Preview</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setInvoice(inv);
+                              setViewMode('editor');
+                              setTimeout(() => {
+                                downloadInvoiceAsPDF('printable-invoice', `PrimeAds_Invoice_${inv.invoiceNumber}`);
+                              }, 150);
+                            }}
+                            className="p-1.5 rounded bg-emerald-950/80 border border-emerald-800 text-emerald-300 hover:bg-emerald-900 cursor-pointer"
+                            title="Download PDF"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              downloadInvoiceAsText(inv);
+                            }}
+                            className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
+                            title="Download TXT Receipt"
+                          >
+                            <FileDown className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleDeleteSaved(inv.id)}
@@ -1042,6 +1173,52 @@ _Thank you for choosing ${invoice.agencyName}!_`;
                 <p className="mt-0.5">
                   Computer-generated legal tax invoice with cryptographic CEO signature verification.
                 </p>
+              </div>
+            </div>
+
+            {/* Quick Export & Actions Toolbar */}
+            <div className="w-full max-w-[700px] flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-900/90 border border-slate-800 rounded-xl shadow-lg">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-300 font-semibold flex items-center gap-1.5">
+                  <Download className="w-3.5 h-3.5 text-emerald-400" />
+                  Export & Share Options:
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleDownloadPDF}
+                  disabled={isGeneratingPdf}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
+                  title="Download PDF"
+                >
+                  {isGeneratingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  <span>{isGeneratingPdf ? 'Processing...' : 'Download PDF'}</span>
+                </button>
+                <button
+                  onClick={handleDownloadImage}
+                  disabled={isGeneratingImage}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Download Image (PNG)"
+                >
+                  <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Download Image</span>
+                </button>
+                <button
+                  onClick={handleDownloadText}
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  title="Download Text Receipt"
+                >
+                  <FileDown className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Receipt (.txt)</span>
+                </button>
+                <button
+                  onClick={handleCopyWhatsAppReceipt}
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  title="Copy for WhatsApp"
+                >
+                  <Copy className="w-3.5 h-3.5 text-amber-400" />
+                  <span>WhatsApp Copy</span>
+                </button>
               </div>
             </div>
           </div>

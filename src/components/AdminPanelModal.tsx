@@ -403,7 +403,20 @@ Thank you for your prompt assistance.`;
               </button>
             </form>
 
-            <div className="mt-8 text-[11px] text-slate-500 flex items-center gap-1.5">
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <span className="text-[11px] text-slate-500">Default password:</span>
+              <button
+                type="button"
+                onClick={() => setPasscode('prime7788')}
+                className="text-[11px] font-mono px-2.5 py-1 rounded bg-slate-900/90 border border-slate-800 text-emerald-400 hover:border-emerald-500/80 hover:bg-slate-850 cursor-pointer transition-all flex items-center gap-1"
+                title="Click to autofill default password"
+              >
+                <span>prime7788</span>
+                <span className="text-[9px] text-slate-500 font-sans">(click to fill)</span>
+              </button>
+            </div>
+
+            <div className="mt-6 text-[11px] text-slate-500 flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400/70" />
               <span>Encrypted Access • Authorized Administrators Only</span>
             </div>

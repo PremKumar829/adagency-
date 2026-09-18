@@ -15,6 +15,7 @@ import { Footer } from './components/Footer';
 import { FloatingSupportWidget } from './components/FloatingSupportWidget';
 import { LaunchCampaignModal } from './components/LaunchCampaignModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
+import { ClientInvoiceModal } from './components/ClientInvoiceModal';
 import { INITIAL_CLIENT_INQUIRIES } from './data/inquiriesData';
 import { INITIAL_LEDGER_ORDERS } from './data/ledgerData';
 import { loadAgencySettings, saveAgencySettings, buildWhatsAppLink, buildTelegramLink } from './utils/agencySettings';
@@ -59,6 +60,9 @@ export default function App() {
 
   // Admin Modal State
   const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
+
+  // Client Invoice Verification & Download Modal State
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState<boolean>(false);
 
   // Modal State
   const [isLaunchModalOpen, setIsLaunchModalOpen] = useState<boolean>(false);
@@ -252,6 +256,7 @@ export default function App() {
         onCurrencyChange={setCurrency}
         onOpenLaunchModal={handleOpenLaunchModal}
         onOpenAdmin={() => setIsAdminModalOpen(true)}
+        onOpenInvoice={() => setIsInvoiceModalOpen(true)}
         agencySettings={agencySettings}
       />
 
@@ -322,10 +327,11 @@ export default function App() {
         <FaqSection language={language} />
       </main>
 
-      {/* 8. Secure Footer with Admin Trigger */}
+      {/* 8. Secure Footer with Admin Trigger & Invoice Access */}
       <Footer
         language={language}
         onOpenAdmin={() => setIsAdminModalOpen(true)}
+        onOpenInvoice={() => setIsInvoiceModalOpen(true)}
         agencySettings={agencySettings}
       />
 
@@ -333,6 +339,13 @@ export default function App() {
       <FloatingSupportWidget
         language={language}
         clientGoalConfig={clientGoalConfig}
+        agencySettings={agencySettings}
+      />
+
+      {/* Client-Facing Invoice Download & Verification Center */}
+      <ClientInvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
         agencySettings={agencySettings}
       />
 
